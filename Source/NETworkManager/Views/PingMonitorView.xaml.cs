@@ -8,10 +8,12 @@ namespace NETworkManager.Views;
 public partial class PingMonitorView
 {
     private readonly PingMonitorViewModel _viewModel;
+    
 
     public PingMonitorView(Guid hostId, Action<Guid> removeHostByGuid, (IPAddress ipAddress, string hostname) host,
         string group)
     {
+        
         InitializeComponent();
 
         _viewModel = new PingMonitorViewModel(DialogCoordinator.Instance, hostId, removeHostByGuid, host, group);
@@ -35,9 +37,9 @@ public partial class PingMonitorView
         _viewModel.Stop();
     }
 
-    public void Export()
+    public async void Export()
     {
-        _viewModel.Export().ConfigureAwait(false);
+        await _viewModel.ExportAsync(_viewModel.CancellationTokenSource.Token).ConfigureAwait(false);
     }
 
     private void Dispatcher_ShutdownStarted(object sender, EventArgs e)

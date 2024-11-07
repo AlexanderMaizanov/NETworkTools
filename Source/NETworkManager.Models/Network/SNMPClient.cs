@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Security;
+using System.Threading;
 using System.Threading.Tasks;
 using Lextm.SharpSnmpLib;
 using Lextm.SharpSnmpLib.Messaging;
@@ -151,6 +152,50 @@ public sealed class SNMPClient
             }
         }, options.CancellationToken);
     }
+
+    public async Task GetAsync(IPAddress ipAddress, List<string> oids, SNMPOptions options, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var version = options.Version == SNMPVersion.V1 ? VersionCode.V1 : VersionCode.V2;
+            var ipEndPoint = new IPEndPoint(ipAddress, options.Port);
+            var community = new OctetString(SecureStringHelper.ConvertToString(options.Community));
+
+            var variables = oids.Select(oid => new Variable(new ObjectIdentifier(oid))).ToList();
+
+            var message = new GetRequestMessage(Messenger.NextMessageId, version, community, variables);
+            var response = await message.GetResponseAsync(ipEndPoint, cancellationToken).ConfigureAwait(false);
+
+            var pdu = response.Pdu();
+
+            // Check for errors
+            var errorCode = pdu.ErrorStatus.ToInt32();
+
+            if (errorCode != 0)
+            {
+                OnError(new SNMPErrorArgs(pdu.ErrorStatus.ToErrorCode()));
+
+                return;
+            }
+
+            // Return the SNMP information
+            foreach (var variable in pdu.Variables)
+                OnReceived(new SNMPReceivedArgs(new SNMPInfo(variable.Id, variable.Data)));
+        }
+        catch (OperationCanceledException)
+        {
+            OnCanceled();
+        }
+        catch (Exception ex)
+        {
+            OnError(new SNMPErrorArgs(ex.Message));
+        }
+        finally
+        {
+            OnComplete();
+        }
+    }
+
 
     /// <summary>
     ///     Get asynchronously the SNMP information of the given IP address (Applies to v3).
@@ -301,6 +346,82 @@ public sealed class SNMPClient
                 OnComplete();
             }
         }, options.CancellationToken);
+    }
+
+    public async Task WalkAsync(IPAddress ipAddress, string oid, SNMPOptions options, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var version = options.Version == SNMPVersion.V1 ? VersionCode.V1 : VersionCode.V2;
+            var ipEndPoint = new IPEndPoint(ipAddress, options.Port);
+            var community = new OctetString(SecureStringHelper.ConvertToString(options.Community));
+            var table = new ObjectIdentifier(oid);
+
+            var results = new List<Variable>();
+
+            var seed = new Variable(table);
+            var subTreeMask = string.Format(CultureInfo.InvariantCulture, "{0}.", table);
+
+            do
+            {
+                var variables = new List<Variable>
+                    {
+                        new(seed.Id)
+                    };
+
+                var message = new GetNextRequestMessage(Messenger.NextRequestId, version, community, variables);
+
+                var response = await message.GetResponseAsync(ipEndPoint, options.CancellationToken).ConfigureAwait(false);
+
+                var pdu = response.Pdu();
+
+                // No more objects
+                if (pdu.ErrorStatus.ToErrorCode() == ErrorCode.NoSuchName)
+                    break;
+
+                // Check for errors
+                if (pdu.ErrorStatus.ToInt32() != 0)
+                {
+                    OnError(new SNMPErrorArgs(pdu.ErrorStatus.ToErrorCode()));
+
+                    return;
+                }
+
+                // Skip the first entry
+                if (pdu.Variables[0].Id == table)
+                    continue;
+
+                // End of MIB view
+                if (pdu.Variables[0].Data.TypeCode == SnmpType.EndOfMibView)
+                    break;
+
+                // Not in subtree
+                if (options.WalkMode == WalkMode.WithinSubtree && !pdu.Variables[0].Id.ToString()
+                        .StartsWith(subTreeMask, StringComparison.Ordinal))
+                    break;
+
+                results.Add(pdu.Variables[0]);
+
+                // Next seed
+                seed = pdu.Variables[0];
+            } while (!options.CancellationToken.IsCancellationRequested);
+
+            foreach (var result in results)
+                OnReceived(new SNMPReceivedArgs(new SNMPInfo(result.Id, result.Data)));
+        }
+        catch (OperationCanceledException)
+        {
+            OnCanceled();
+        }
+        catch (Exception ex)
+        {
+            OnError(new SNMPErrorArgs(ex.Message));
+        }
+        finally
+        {
+            OnComplete();
+        }
+
     }
 
     /// <summary>

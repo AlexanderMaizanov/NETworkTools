@@ -1,18 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
-using LiveCharts;
-using LiveCharts.Configurations;
-using LiveCharts.Wpf;
+using AsyncAwaitBestPractices;
+using AsyncAwaitBestPractices.MVVM;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using NETworkManager.Localization.Resources;
@@ -31,6 +34,20 @@ namespace NETworkManager.ViewModels;
 public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 {
     #region Variables
+
+    public Axis[] Radion1XAxes { get; set; } = [];
+
+    public Axis[] Radion1YAxes { get; set; } = [];
+
+    public ObservableCollection<ISeries> Series { get; set; } =
+    [
+        new LineSeries<double>
+        {
+            Values = [],
+            Fill = null
+        }
+    ];
+
 
     private readonly IDialogCoordinator _dialogCoordinator;
     private readonly DispatcherTimer _searchDispatcherTimer = new();
@@ -571,7 +588,7 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
         _dialogCoordinator = instance;
 
-        LoadNetworkInterfaces().ConfigureAwait(false);
+        LoadNetworkInterfaces().SafeFireAndForget(ConfigureAwaitOptions.None);
 
         InitialBandwidthChart();
 
@@ -584,8 +601,8 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
         _searchDispatcherTimer.Tick += SearchDispatcherTimer_Tick;
 
         // Detect if network address or status changed...
-        NetworkChange.NetworkAvailabilityChanged += (_, _) => ReloadNetworkInterfaces();
-        NetworkChange.NetworkAddressChanged += (_, _) => ReloadNetworkInterfaces();
+        NetworkChange.NetworkAvailabilityChanged += (_, _) => ReloadNetworkInterfacesAction();
+        NetworkChange.NetworkAddressChanged += (_, _) => ReloadNetworkInterfacesAction();
 
         LoadSettings();
 
@@ -594,25 +611,22 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
     private void InitialBandwidthChart()
     {
-        var dayConfig = Mappers.Xy<LvlChartsDefaultInfo>()
-            .X(dayModel => (double)dayModel.DateTime.Ticks / TimeSpan.FromHours(1).Ticks)
-            .Y(dayModel => dayModel.Value);
+        Series =
+        [
+            new LineSeries<LvlChartsDefaultInfo>
+            {
+                Name = "Download",
+                Values = [],
+                Mapping = (day, index) => new ((double)day.DateTime.Ticks / TimeSpan.FromHours(1).Ticks, day.Value)
 
-        Series = new SeriesCollection(dayConfig)
-        {
-            new LineSeries
-            {
-                Title = "Download",
-                Values = new ChartValues<LvlChartsDefaultInfo>(),
-                PointGeometry = null
             },
-            new LineSeries
+            new LineSeries<LvlChartsDefaultInfo>
             {
-                Title = "Upload",
-                Values = new ChartValues<LvlChartsDefaultInfo>(),
-                PointGeometry = null
+                Name = "Upload",
+                Values = [],
+                Mapping = (day, index) => new ((double)day.DateTime.Ticks / TimeSpan.FromHours(1).Ticks, day.Value)
             }
-        };
+        ];
 
         FormatterDate = value =>
             DateTimeHelper.DateTimeToTimeString(new DateTime((long)(value * TimeSpan.FromHours(1).Ticks)));
@@ -621,13 +635,13 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
     public Func<double, string> FormatterDate { get; set; }
     public Func<double, string> FormatterSpeed { get; set; }
-    public SeriesCollection Series { get; set; }
+    //public SeriesCollection Series { get; set; }
 
     private async Task LoadNetworkInterfaces()
     {
         IsNetworkInterfaceLoading = true;
 
-        NetworkInterfaces = await NetworkInterface.GetNetworkInterfacesAsync();
+        NetworkInterfaces = await NetworkInterface.GetNetworkInterfacesAsync(CancellationTokenSource.Token);
 
         // Get the last selected interface, if it is still available on this machine...
         if (NetworkInterfaces.Count > 0)
@@ -662,19 +676,20 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
     private bool ReloadNetworkInterfaces_CanExecute(object obj)
     {
         return !IsNetworkInterfaceLoading &&
-               Application.Current.MainWindow != null &&
-               !((MetroWindow)Application.Current.MainWindow)
+               System.Windows.Application.Current.MainWindow != null &&
+               !((MetroWindow)System.Windows.Application.Current.MainWindow)
                    .IsAnyDialogOpen;
     }
 
-    private void ReloadNetworkInterfacesAction()
+    private async void ReloadNetworkInterfacesAction()
     {
-        ReloadNetworkInterfaces();
+        await ReloadNetworkInterfacesAsync(CancellationTokenSource.Token);
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction().ConfigureAwait(false));
+    public IAsyncCommand ExportCommand => new AsyncCommand(async () => await ExportAction(CancellationTokenSource.Token).WaitAsync(CancellationTokenSource.Token)
+        , continueOnCapturedContext: false);
 
-    private async Task ExportAction()
+    private async Task ExportAction(CancellationToken cancellationToken)
     {
         var customDialog = new CustomDialog
         {
@@ -683,7 +698,7 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
         var exportViewModel = new ExportViewModel(async instance =>
             {
-                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog);
+                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken);
 
                 try
                 {
@@ -697,12 +712,12 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
                     await _dialogCoordinator.ShowMessageAsync(this, Strings.Error,
                         Strings.AnErrorOccurredWhileExportingTheData + Environment.NewLine +
-                        Environment.NewLine + ex.Message, MessageDialogStyle.Affirmative, settings);
+                        Environment.NewLine + ex.Message, MessageDialogStyle.Affirmative, settings).WaitAsync(cancellationToken);
                 }
 
                 SettingsManager.Current.NetworkInterface_ExportFileType = instance.FileType;
                 SettingsManager.Current.NetworkInterface_ExportFilePath = instance.FilePath;
-            }, _ => { _dialogCoordinator.HideMetroDialogAsync(this, customDialog); },
+            }, async _ => { await _dialogCoordinator.HideMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken); },
             [
                 ExportFileType.Csv, ExportFileType.Xml, ExportFileType.Json
             ], true,
@@ -714,74 +729,49 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
             DataContext = exportViewModel
         };
 
-        await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog);
+        await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    public ICommand ApplyConfigurationCommand =>
-        new RelayCommand(_ => ApplyConfigurationAction(), ApplyConfiguration_CanExecute);
+    public IAsyncCommand ApplyConfigurationCommand =>
+        new AsyncCommand(async () => await ApplyConfigurationAsync(CancellationTokenSource.Token).WaitAsync(CancellationTokenSource.Token)
+                                    , ApplyConfiguration_CanExecute
+                                    , continueOnCapturedContext: false);
 
     private bool ApplyConfiguration_CanExecute(object parameter)
     {
-        return Application.Current.MainWindow != null &&
-               !((MetroWindow)Application.Current.MainWindow)
+        return System.Windows.Application.Current.MainWindow != null &&
+               !((MetroWindow)System.Windows.Application.Current.MainWindow)
                    .IsAnyDialogOpen;
     }
 
-    private void ApplyConfigurationAction()
-    {
-        ApplyConfiguration().ConfigureAwait(false);
-    }
+    public IAsyncCommand ApplyProfileConfigCommand => new AsyncCommand(() => ApplyConfigurationFromProfileAsync(CancellationTokenSource.Token)
+    .WaitAsync(CancellationTokenSource.Token), continueOnCapturedContext: false);
 
-    public ICommand ApplyProfileConfigCommand => new RelayCommand(_ => ApplyProfileProfileAction());
-
-    private void ApplyProfileProfileAction()
-    {
-        ApplyConfigurationFromProfile().ConfigureAwait(false);
-    }
-
-    public ICommand AddProfileCommand => new RelayCommand(_ => AddProfileAction());
-
-    private void AddProfileAction()
-    {
-        ProfileDialogManager
+    public ICommand AddProfileCommand => new AsyncCommand(() => ProfileDialogManager
             .ShowAddProfileDialog(this, this, _dialogCoordinator, null, null, ApplicationName.NetworkInterface)
-            .ConfigureAwait(false);
-    }
+            .WaitAsync(CancellationTokenSource.Token), continueOnCapturedContext: false);
 
     private bool ModifyProfile_CanExecute(object obj)
     {
+        //AddProfileCommand.RaiseCanExecuteChanged();
         return SelectedProfile is { IsDynamic: false };
     }
 
-    public ICommand EditProfileCommand => new RelayCommand(_ => EditProfileAction(), ModifyProfile_CanExecute);
+    public ICommand EditProfileCommand => new AsyncCommand(() => ProfileDialogManager.ShowEditProfileDialog(this, _dialogCoordinator, SelectedProfile)
+            .WaitAsync(CancellationTokenSource.Token), ModifyProfile_CanExecute, continueOnCapturedContext: false);
 
-    private void EditProfileAction()
+    public ICommand CopyAsProfileCommand => new AsyncCommand(() => ProfileDialogManager.ShowCopyAsProfileDialog(this, _dialogCoordinator, SelectedProfile)
+                                                    , ModifyProfile_CanExecute, continueOnCapturedContext: false);
+
+    public ICommand DeleteProfileCommand => new AsyncCommand(() => ProfileDialogManager
+            .ShowDeleteProfileDialog(this, _dialogCoordinator, [SelectedProfile]), ModifyProfile_CanExecute, continueOnCapturedContext: false);
+
+    public ICommand EditGroupCommand => new RelayCommand(EditGroupCommandAsync.Execute);
+    public IAsyncCommand<string> EditGroupCommandAsync => new AsyncCommand<string>(EditGroupActionAsync);
+
+    private Task EditGroupActionAsync(string group)
     {
-        ProfileDialogManager.ShowEditProfileDialog(this, _dialogCoordinator, SelectedProfile).ConfigureAwait(false);
-    }
-
-    public ICommand CopyAsProfileCommand => new RelayCommand(_ => CopyAsProfileAction(), ModifyProfile_CanExecute);
-
-    private void CopyAsProfileAction()
-    {
-        ProfileDialogManager.ShowCopyAsProfileDialog(this, _dialogCoordinator, SelectedProfile).ConfigureAwait(false);
-    }
-
-    public ICommand DeleteProfileCommand => new RelayCommand(_ => DeleteProfileAction(), ModifyProfile_CanExecute);
-
-    private void DeleteProfileAction()
-    {
-        ProfileDialogManager
-            .ShowDeleteProfileDialog(this, _dialogCoordinator, new List<ProfileInfo> { SelectedProfile })
-            .ConfigureAwait(false);
-    }
-
-    public ICommand EditGroupCommand => new RelayCommand(EditGroupAction);
-
-    private void EditGroupAction(object group)
-    {
-        ProfileDialogManager.ShowEditGroupDialog(this, _dialogCoordinator, ProfileManager.GetGroup(group.ToString()))
-            .ConfigureAwait(false);
+        return ProfileDialogManager.ShowEditGroupDialog(this, _dialogCoordinator, ProfileManager.GetGroup(group.ToString()));
     }
 
     public ICommand ClearSearchCommand => new RelayCommand(_ => ClearSearchAction());
@@ -795,18 +785,14 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
     private bool AdditionalCommands_CanExecute(object parameter)
     {
-        return Application.Current.MainWindow != null &&
-               !((MetroWindow)Application.Current.MainWindow)
+        OpenNetworkConnectionsCommand.RaiseCanExecuteChanged();
+        return System.Windows.Application.Current.MainWindow != null &&
+               !((MetroWindow)System.Windows.Application.Current.MainWindow)
                    .IsAnyDialogOpen;
     }
 
-    public ICommand OpenNetworkConnectionsCommand =>
-        new RelayCommand(_ => OpenNetworkConnectionsAction(), AdditionalCommands_CanExecute);
-
-    private void OpenNetworkConnectionsAction()
-    {
-        OpenNetworkConnectionsAsync().ConfigureAwait(false);
-    }
+    public IAsyncCommand OpenNetworkConnectionsCommand =>
+        new AsyncCommand(() => OpenNetworkConnectionsAsync(CancellationTokenSource.Token), AdditionalCommands_CanExecute, continueOnCapturedContext: false);
 
     public ICommand IPScannerCommand => new RelayCommand(_ => IPScannerAction(), AdditionalCommands_CanExecute);
 
@@ -822,59 +808,24 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
             $"{ipTuple.Item1}/{Subnetmask.ConvertSubnetmaskToCidr(ipTuple.Item2)}");
     }
 
-    public ICommand FlushDNSCommand => new RelayCommand(_ => FlushDNSAction(), AdditionalCommands_CanExecute);
+    public IAsyncCommand FlushDNSCommand => new AsyncCommand(() => FlushDNSAsync(CancellationTokenSource.Token), AdditionalCommands_CanExecute, continueOnCapturedContext: false);
 
-    private void FlushDNSAction()
-    {
-        FlushDNSAsync().ConfigureAwait(false);
-    }
+    public IAsyncCommand ReleaseRenewCommand => new AsyncCommand(() => ReleaseRenewAsync(IPConfigReleaseRenewMode.ReleaseRenew, CancellationTokenSource.Token), AdditionalCommands_CanExecute, continueOnCapturedContext: false);
 
-    public ICommand ReleaseRenewCommand => new RelayCommand(_ => ReleaseRenewAction(), AdditionalCommands_CanExecute);
+    public IAsyncCommand ReleaseCommand => new AsyncCommand(() => ReleaseRenewAsync(IPConfigReleaseRenewMode.Release, CancellationTokenSource.Token), AdditionalCommands_CanExecute, continueOnCapturedContext: false);
 
-    private void ReleaseRenewAction()
-    {
-        ReleaseRenewAsync(IPConfigReleaseRenewMode.ReleaseRenew).ConfigureAwait(false);
-    }
+    public IAsyncCommand RenewCommand => new AsyncCommand(() => ReleaseRenewAsync(IPConfigReleaseRenewMode.Renew, CancellationTokenSource.Token), AdditionalCommands_CanExecute, continueOnCapturedContext: false);
 
-    public ICommand ReleaseCommand => new RelayCommand(_ => ReleaseAction(), AdditionalCommands_CanExecute);
+    public IAsyncCommand ReleaseRenew6Command => new AsyncCommand(() => ReleaseRenewAsync(IPConfigReleaseRenewMode.ReleaseRenew6, CancellationTokenSource.Token), AdditionalCommands_CanExecute, continueOnCapturedContext: false);
 
-    private void ReleaseAction()
-    {
-        ReleaseRenewAsync(IPConfigReleaseRenewMode.Release).ConfigureAwait(false);
-    }
+    public IAsyncCommand Release6Command => new AsyncCommand(() => ReleaseRenewAsync(IPConfigReleaseRenewMode.Release6, CancellationTokenSource.Token), AdditionalCommands_CanExecute, continueOnCapturedContext: false);
+    
+    public IAsyncCommand Renew6Command => new AsyncCommand(() => ReleaseRenewAsync(IPConfigReleaseRenewMode.Renew, CancellationTokenSource.Token), AdditionalCommands_CanExecute, continueOnCapturedContext: false); 
 
-    public ICommand RenewCommand => new RelayCommand(_ => RenewAction(), AdditionalCommands_CanExecute);
+    public IAsyncCommand AddIPv4AddressCommand => new AsyncCommand(() => AddIPv4AddressAction(CancellationTokenSource.Token),
+        AdditionalCommands_CanExecute, continueOnCapturedContext: false);
 
-    private void RenewAction()
-    {
-        ReleaseRenewAsync(IPConfigReleaseRenewMode.Renew).ConfigureAwait(false);
-    }
-
-    public ICommand ReleaseRenew6Command => new RelayCommand(_ => ReleaseRenew6Action(), AdditionalCommands_CanExecute);
-
-    private void ReleaseRenew6Action()
-    {
-        ReleaseRenewAsync(IPConfigReleaseRenewMode.ReleaseRenew6).ConfigureAwait(false);
-    }
-
-    public ICommand Release6Command => new RelayCommand(_ => Release6Action(), AdditionalCommands_CanExecute);
-
-    private void Release6Action()
-    {
-        ReleaseRenewAsync(IPConfigReleaseRenewMode.Release6).ConfigureAwait(false);
-    }
-
-    public ICommand Renew6Command => new RelayCommand(_ => Renew6Action(), AdditionalCommands_CanExecute);
-
-    private void Renew6Action()
-    {
-        ReleaseRenewAsync(IPConfigReleaseRenewMode.Renew).ConfigureAwait(false);
-    }
-
-    public ICommand AddIPv4AddressCommand => new RelayCommand(_ => AddIPv4AddressAction().ConfigureAwait(false),
-        AdditionalCommands_CanExecute);
-
-    private async Task AddIPv4AddressAction()
+    private async Task AddIPv4AddressAction(CancellationToken cancellationToken)
     {
         var customDialog = new CustomDialog
         {
@@ -883,23 +834,23 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
         var ipAddressAndSubnetmaskViewModel = new IPAddressAndSubnetmaskViewModel(async instance =>
         {
-            await _dialogCoordinator.HideMetroDialogAsync(this, customDialog);
+            await _dialogCoordinator.HideMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken).ConfigureAwait(false);
 
-            await AddIPv4Address(instance.IPAddress, instance.Subnetmask);
-        }, _ => { _dialogCoordinator.HideMetroDialogAsync(this, customDialog); });
+            await AddIPv4Address(instance.IPAddress, instance.Subnetmask, cancellationToken).ConfigureAwait(false);
+        }, async _ => { await _dialogCoordinator.HideMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken); });
 
         customDialog.Content = new IPAddressAndSubnetmaskDialog
         {
             DataContext = ipAddressAndSubnetmaskViewModel
         };
 
-        await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog);
+        await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken);
     }
 
-    public ICommand RemoveIPv4AddressCommand => new RelayCommand(_ => RemoveIPv4AddressAction().ConfigureAwait(false),
-        AdditionalCommands_CanExecute);
+    public IAsyncCommand RemoveIPv4AddressCommand => new AsyncCommand(() => RemoveIPv4AddressAction(CancellationTokenSource.Token),
+        AdditionalCommands_CanExecute, continueOnCapturedContext: false);
 
-    private async Task RemoveIPv4AddressAction()
+    private async Task RemoveIPv4AddressAction(CancellationToken cancellationToken)
     {
         var customDialog = new CustomDialog
         {
@@ -908,10 +859,10 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
         var dropdownViewModel = new DropdownViewModel(async instance =>
             {
-                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog);
+                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                await RemoveIPv4Address(instance.SelectedValue.Split("/")[0]);
-            }, _ => { _dialogCoordinator.HideMetroDialogAsync(this, customDialog); },
+                await RemoveIPv4Address(instance.SelectedValue.Split("/")[0], cancellationToken).ConfigureAwait(false);
+            }, async _ => { await _dialogCoordinator.HideMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken); },
             SelectedNetworkInterface.IPv4Address.Select(x => $"{x.Item1}/{Subnetmask.ConvertSubnetmaskToCidr(x.Item2)}")
                 .ToList(), Strings.IPv4Address);
 
@@ -929,19 +880,19 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
     #region Methods
 
-    private async void ReloadNetworkInterfaces()
+    private async Task ReloadNetworkInterfacesAsync(CancellationToken cancellationToken)
     {
         IsNetworkInterfaceLoading = true;
 
         // Make the user happy, let him see a reload animation (and he cannot spam the reload command)
-        await Task.Delay(2000);
+        await Task.Delay(2000, cancellationToken);
 
         var id = string.Empty;
 
         if (SelectedNetworkInterface != null)
             id = SelectedNetworkInterface.Id;
 
-        NetworkInterfaces = await NetworkInterface.GetNetworkInterfacesAsync();
+        NetworkInterfaces = await NetworkInterface.GetNetworkInterfacesAsync(cancellationToken);
 
         // Change interface...
         SelectedNetworkInterface = string.IsNullOrEmpty(id)
@@ -982,7 +933,7 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
         }
     }
 
-    private async Task ApplyConfiguration()
+    private async Task ApplyConfigurationAsync(CancellationToken cancellationToken)
     {
         IsConfigurationRunning = true;
         IsStatusMessageDisplayed = false;
@@ -1024,9 +975,9 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
             networkInterface.UserHasCanceled += NetworkInterface_UserHasCanceled;
 
-            await networkInterface.ConfigureNetworkInterfaceAsync(config);
+            await networkInterface.ConfigureNetworkInterfaceAsync(config, cancellationToken).ConfigureAwait(false);
 
-            ReloadNetworkInterfaces();
+            await ReloadNetworkInterfacesAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -1039,7 +990,7 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
         }
     }
 
-    private async Task ApplyConfigurationFromProfile()
+    private async Task ApplyConfigurationFromProfileAsync(CancellationToken cancellationToken)
     {
         IsConfigurationRunning = true;
         IsStatusMessageDisplayed = false;
@@ -1085,9 +1036,9 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
             networkInterface.UserHasCanceled += NetworkInterface_UserHasCanceled;
 
-            await networkInterface.ConfigureNetworkInterfaceAsync(config);
+            await networkInterface.ConfigureNetworkInterfaceAsync(config, cancellationToken).ConfigureAwait(false);
 
-            ReloadNetworkInterfaces();
+            await ReloadNetworkInterfacesAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -1100,7 +1051,7 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
         }
     }
 
-    private async Task OpenNetworkConnectionsAsync()
+    private async Task OpenNetworkConnectionsAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -1115,32 +1066,32 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
         catch (Exception ex)
         {
             await _dialogCoordinator.ShowMessageAsync(this, Strings.Error, ex.Message,
-                MessageDialogStyle.Affirmative, AppearanceManager.MetroDialog);
+                MessageDialogStyle.Affirmative, AppearanceManager.MetroDialog).WaitAsync(cancellationToken);
         }
     }
 
-    private async Task FlushDNSAsync()
+    private async Task FlushDNSAsync(CancellationToken cancellationToken)
     {
         IsConfigurationRunning = true;
         IsStatusMessageDisplayed = false;
 
-        await NetworkInterface.FlushDnsAsync();
+        await NetworkInterface.FlushDnsAsync(cancellationToken);
 
         IsConfigurationRunning = false;
     }
 
-    private async Task ReleaseRenewAsync(IPConfigReleaseRenewMode releaseRenewMode)
+    private async Task ReleaseRenewAsync(IPConfigReleaseRenewMode releaseRenewMode, CancellationToken cancellationToken)
     {
         IsConfigurationRunning = true;
 
         await NetworkInterface.ReleaseRenewAsync(releaseRenewMode, SelectedNetworkInterface.Name);
 
-        ReloadNetworkInterfaces();
+        await ReloadNetworkInterfacesAsync(cancellationToken);
 
         IsConfigurationRunning = false;
     }
 
-    private async Task AddIPv4Address(string ipAddress, string subnetmaskOrCidr)
+    private async Task AddIPv4Address(string ipAddress, string subnetmaskOrCidr, CancellationToken cancellationToken)
     {
         IsConfigurationRunning = true;
         IsStatusMessageDisplayed = false;
@@ -1161,9 +1112,8 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
         try
         {
-            await NetworkInterface.AddIPAddressToNetworkInterfaceAsync(config);
-
-            ReloadNetworkInterfaces();
+            await NetworkInterface.AddIPAddressToNetworkInterfaceAsync(config, cancellationToken).ConfigureAwait(false);
+            await ReloadNetworkInterfacesAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -1176,7 +1126,7 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
         }
     }
 
-    private async Task RemoveIPv4Address(string ipAddress)
+    private async Task RemoveIPv4Address(string ipAddress, CancellationToken cancellationToken)
     {
         IsConfigurationRunning = true;
         IsStatusMessageDisplayed = false;
@@ -1189,9 +1139,8 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
 
         try
         {
-            await NetworkInterface.RemoveIPAddressFromNetworkInterfaceAsync(config);
-
-            ReloadNetworkInterfaces();
+            await NetworkInterface.RemoveIPAddressFromNetworkInterfaceAsync(config, cancellationToken).ConfigureAwait(false);
+            await ReloadNetworkInterfacesAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -1238,8 +1187,8 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
         if (Series == null)
             return;
 
-        Series[0].Values.Clear();
-        Series[1].Values.Clear();
+        Series[0].Values = new ObservableCollection<LvlChartsDefaultInfo>();
+        Series[1].Values = new ObservableCollection<LvlChartsDefaultInfo>();
 
         var currentDateTime = DateTime.Now;
 
@@ -1247,8 +1196,8 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
         {
             var bandwidthInfo = new LvlChartsDefaultInfo(currentDateTime.AddSeconds(-i), double.NaN);
 
-            Series[0].Values.Add(bandwidthInfo);
-            Series[1].Values.Add(bandwidthInfo);
+            ((ObservableCollection<LvlChartsDefaultInfo>)Series[0].Values).Add(bandwidthInfo);
+            ((ObservableCollection<LvlChartsDefaultInfo>)Series[1].Values).Add(bandwidthInfo);
         }
     }
 
@@ -1394,22 +1343,26 @@ public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
         BandwidthDiffBytesReceived = BandwidthTotalBytesReceived - _bandwidthTotalBytesReceivedTemp;
         BandwidthDiffBytesSent = BandwidthTotalBytesSent - _bandwidthTotalBytesSentTemp;
 
+        var upValues = Series[0].Values as ObservableCollection<LvlChartsDefaultInfo>;
+        var downValues = Series[1].Values as ObservableCollection<LvlChartsDefaultInfo>;
+
         // Add chart entry
-        Series[0].Values.Add(new LvlChartsDefaultInfo(e.DateTime, e.ByteReceivedSpeed));
-        Series[1].Values.Add(new LvlChartsDefaultInfo(e.DateTime, e.ByteSentSpeed));
+        upValues.Add(new LvlChartsDefaultInfo(e.DateTime, e.ByteReceivedSpeed));
+        downValues.Add(new LvlChartsDefaultInfo(e.DateTime, e.ByteSentSpeed));
 
         // Remove data older than 60 seconds
-        if (Series[0].Values.Count > 59)
-            Series[0].Values.RemoveAt(0);
+        if (upValues.Count > 59)
+            upValues.RemoveAt(0);
 
-        if (Series[1].Values.Count > 59)
-            Series[1].Values.RemoveAt(0);
+        if (downValues.Count > 59)
+            downValues.RemoveAt(0);
     }
 
     private void NetworkInterface_UserHasCanceled(object sender, EventArgs e)
     {
         StatusMessage = Strings.CanceledByUserMessage;
         IsStatusMessageDisplayed = true;
+        CancellationTokenSource.Cancel();
     }
 
     #endregion

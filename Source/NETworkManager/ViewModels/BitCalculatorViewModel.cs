@@ -45,9 +45,9 @@ public class BitCalculatorViewModel : ViewModelBase
 
     public ICollectionView InputHistoryView { get; }
 
-    private readonly List<BitCaluclatorUnit> _units = new();
+    private readonly List<BitCalculatorUnit> _units = new();
 
-    public List<BitCaluclatorUnit> Units
+    public List<BitCalculatorUnit> Units
     {
         get => _units;
         private init
@@ -60,9 +60,9 @@ public class BitCalculatorViewModel : ViewModelBase
         }
     }
 
-    private BitCaluclatorUnit _unit;
+    private BitCalculatorUnit _unit;
 
-    public BitCaluclatorUnit Unit
+    public BitCalculatorUnit Unit
     {
         get => _unit;
         set
@@ -109,9 +109,9 @@ public class BitCalculatorViewModel : ViewModelBase
         }
     }
 
-    private BitCaluclatorInfo _result = new();
+    private BitCalculatorInfo _result = new();
 
-    public BitCaluclatorInfo Result
+    public BitCalculatorInfo Result
     {
         get => _result;
         private set
@@ -135,7 +135,7 @@ public class BitCalculatorViewModel : ViewModelBase
 
         InputHistoryView = CollectionViewSource.GetDefaultView(SettingsManager.Current.BitCalculator_InputHistory);
 
-        Units = Enum.GetValues(typeof(BitCaluclatorUnit)).Cast<BitCaluclatorUnit>().ToList();
+        Units = Enum.GetValues(typeof(BitCalculatorUnit)).Cast<BitCalculatorUnit>().ToList();
         Unit = Units.First(x => x == SettingsManager.Current.BitCalculator_Unit);
 
         LoadSettings();
@@ -218,7 +218,7 @@ public class BitCalculatorViewModel : ViewModelBase
         IsRunning = true;
 
         if (double.TryParse(Input.Replace('.', ','), out var input))
-            Result = await BitCaluclator.CalculateAsync(input, Unit, SettingsManager.Current.BitCalculator_Notation);
+            Result = await BitCalculator.CalculateAsync(input, Unit, SettingsManager.Current.BitCalculator_Notation);
         else
             Log.Error($"Could not parse input \"{Input}\" into double!");
 

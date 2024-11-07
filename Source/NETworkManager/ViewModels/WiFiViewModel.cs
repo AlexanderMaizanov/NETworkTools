@@ -6,14 +6,11 @@ using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Data;
-using System.Windows.Input;
 using System.Windows.Threading;
 using Windows.Devices.WiFi;
 using Windows.Foundation.Metadata;
 using Windows.Security.Credentials;
 using Windows.System;
-using LiveCharts;
-using LiveCharts.Wpf;
 using log4net;
 using MahApps.Metro.Controls.Dialogs;
 using NETworkManager.Localization;
@@ -24,10 +21,18 @@ using NETworkManager.Models.Network;
 using NETworkManager.Settings;
 using NETworkManager.Utilities;
 using NETworkManager.Views;
+using System.Threading;
+using LiveChartsCore;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting.Effects;
+using LiveChartsCore.SkiaSharpView.Painting;
+using SkiaSharp;
+using AsyncAwaitBestPractices.MVVM;
+using System.IO;
 
 namespace NETworkManager.ViewModels;
 
-public class WiFiViewModel : ViewModelBase
+public partial class WiFiViewModel : ViewModelBase
 {
     #region Variables
 
@@ -35,7 +40,7 @@ public class WiFiViewModel : ViewModelBase
 
     private static readonly ILog Log = LogManager.GetLogger(typeof(WiFiViewModel));
 
-    private readonly bool _isLoading;
+    private bool _isLoading;
     private readonly DispatcherTimer _autoRefreshTimer = new();
     private readonly DispatcherTimer _hideConnectionStatusMessageTimer = new();
 
@@ -84,7 +89,7 @@ public class WiFiViewModel : ViewModelBase
         }
     }
 
-    private List<WiFiAdapterInfo> _adapters = new();
+    private List<WiFiAdapterInfo> _adapters = [];
 
     public List<WiFiAdapterInfo> Adapters
     {
@@ -114,7 +119,7 @@ public class WiFiViewModel : ViewModelBase
                 if (!_isLoading)
                     SettingsManager.Current.WiFi_InterfaceId = value.NetworkInterfaceInfo.Id;
 
-                Scan(value).ConfigureAwait(false);
+                ScanAsync(value, CancellationTokenSource.Token).ConfigureAwait(false);
             }
 
             _selectedAdapters = value;
@@ -155,12 +160,11 @@ public class WiFiViewModel : ViewModelBase
             // Start timer to refresh automatically
             if (value)
             {
-                _autoRefreshTimer.Interval = AutoRefreshTime.CalculateTimeSpan(SelectedAutoRefreshTime);
-                _autoRefreshTimer.Start();
+                StartAutoRefreshTimer();
             }
             else
             {
-                _autoRefreshTimer.Stop();
+                StopAutoRefreshTimer();
             }
 
             OnPropertyChanged();
@@ -254,7 +258,7 @@ public class WiFiViewModel : ViewModelBase
         }
     }
 
-    private ObservableCollection<WiFiNetworkInfo> _networks = new();
+    private ObservableCollection<WiFiNetworkInfo> _networks = [];
 
     public ObservableCollection<WiFiNetworkInfo> Networks
     {
@@ -301,12 +305,36 @@ public class WiFiViewModel : ViewModelBase
         }
     }
 
-    public SeriesCollection Radio1Series { get; set; } = new();
+    public Axis[] Radion1XAxes { get; set; } = [];
+
+    public Axis[] Radion1YAxes { get; set; } = [];
+
+    public ObservableCollection<ISeries> Radio1Series { get; set; } =
+    [
+        new LineSeries<double>
+        {
+            Values = [],
+            Fill = null
+        }
+    ];
+
+    
 
     public string[] Radio1Labels { get; set; } =
         { " ", " ", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", " ", " " };
 
-    public SeriesCollection Radio2Series { get; set; } = new();
+    public ObservableCollection<ISeries> Radio2Series { get; set; } =
+    [
+        new LineSeries<double>
+        {
+            Values = [],
+            Fill = null
+        }
+    ];
+
+    public Axis[] Radion2XAxes { get; set; } = [];
+
+    public Axis[] Radion2YAxes { get; set; } = [];
 
     public string[] Radio2Labels { get; set; } =
     {
@@ -393,6 +421,7 @@ public class WiFiViewModel : ViewModelBase
     }
 
     private string _connectionStatusMessage;
+    private bool _initAdapter;
 
     public string ConnectionStatusMessage
     {
@@ -417,6 +446,43 @@ public class WiFiViewModel : ViewModelBase
 
         _dialogCoordinator = instance;
 
+        Radion1XAxes = [
+            new Axis
+                {
+                    Name = Strings.Channel,
+                    MaxLimit = 16,
+                    MinLimit = 0,
+                    NamePaint = new SolidColorPaint(SKColors.Black),
+
+                    LabelsPaint = new SolidColorPaint(SKColors.Blue),
+                    TextSize = 10,
+
+                    Labels = Radio1Labels,
+
+                    SeparatorsPaint = new SolidColorPaint() { StrokeThickness = 0 }
+                }
+            ];
+        Radion1YAxes =
+            [
+                new Axis
+                {
+                    Name = Strings.SignalStrength,
+                    MaxLimit = 100,
+                    MinLimit = 0,
+                    NamePaint = new SolidColorPaint(SKColors.Red),
+
+                    LabelsPaint = new SolidColorPaint(SKColors.Green),
+                    TextSize = 20,
+                    Labeler = FormattedDbm,
+
+                    SeparatorsPaint = new SolidColorPaint(SKColors.DimGray)
+                    {
+                        StrokeThickness = 10,
+                        PathEffect = new DashEffect([10.0f, 0.0f])
+                    }
+                }
+            ];
+
         // Check if Microsoft.Windows.SDK.Contracts is available 
         SdkContractAvailable = ApiInformation.IsTypePresent("Windows.Devices.WiFi.WiFiAdapter");
 
@@ -427,8 +493,34 @@ public class WiFiViewModel : ViewModelBase
             return;
         }
 
+        _initAdapter = true;
+        _autoRefreshTimer.Interval = new TimeSpan(0, 0, 3);
+        NetworksView = CollectionViewSource.GetDefaultView(Networks);
+        // Auto refresh
+        _autoRefreshTimer.Tick += AutoRefreshTimer_Tick;
+
+        AutoRefreshTimes = CollectionViewSource.GetDefaultView(AutoRefreshTime.GetDefaults);
+        SelectedAutoRefreshTime = AutoRefreshTimes.Cast<AutoRefreshTimeInfo>().FirstOrDefault(x =>
+            x.Value == SettingsManager.Current.WiFi_AutoRefreshTime.Value &&
+            x.TimeUnit == SettingsManager.Current.WiFi_AutoRefreshTime.TimeUnit);
+        AutoRefreshEnabled = SettingsManager.Current.WiFi_AutoRefreshEnabled;
+
+        // Hide ConnectionStatusMessage automatically
+        _hideConnectionStatusMessageTimer.Interval = new TimeSpan(0, 0, 15);
+        _hideConnectionStatusMessageTimer.Tick += HideConnectionStatusMessageTimer_Tick;
+
+        // Load settings
+        LoadSettings();
+        _autoRefreshTimer.Start();
+
+        _isLoading = false;
+    }
+
+    private async Task InitializeAdapterAsync(CancellationToken cancellationToken)
+    {
+        
         // Check if the access is denied and show a message
-        WiFiAdapterAccessEnabled = RequestAccess();
+        WiFiAdapterAccessEnabled = await RequestAccessAsync(cancellationToken) == WiFiAccessStatus.Allowed;
 
         if (!WiFiAdapterAccessEnabled)
         {
@@ -438,7 +530,7 @@ public class WiFiViewModel : ViewModelBase
         }
 
         // Result view + search
-        NetworksView = CollectionViewSource.GetDefaultView(Networks);
+        
         NetworksView.SortDescriptions.Add(new SortDescription(
             $"{nameof(WiFiNetworkInfo.AvailableNetwork)}.{nameof(WiFiNetworkInfo.AvailableNetwork.Ssid)}",
             ListSortDirection.Ascending));
@@ -471,25 +563,8 @@ public class WiFiViewModel : ViewModelBase
         };
 
         // Load network adapters
-        LoadAdapters(SettingsManager.Current.WiFi_InterfaceId).ConfigureAwait(false);
-
-        // Auto refresh
-        _autoRefreshTimer.Tick += AutoRefreshTimer_Tick;
-
-        AutoRefreshTimes = CollectionViewSource.GetDefaultView(AutoRefreshTime.GetDefaults);
-        SelectedAutoRefreshTime = AutoRefreshTimes.Cast<AutoRefreshTimeInfo>().FirstOrDefault(x =>
-            x.Value == SettingsManager.Current.WiFi_AutoRefreshTime.Value &&
-            x.TimeUnit == SettingsManager.Current.WiFi_AutoRefreshTime.TimeUnit);
-        AutoRefreshEnabled = SettingsManager.Current.WiFi_AutoRefreshEnabled;
-
-        // Hide ConnectionStatusMessage automatically
-        _hideConnectionStatusMessageTimer.Interval = new TimeSpan(0, 0, 15);
-        _hideConnectionStatusMessageTimer.Tick += HideConnectionStatusMessageTimer_Tick;
-
-        // Load settings
-        LoadSettings();
-
-        _isLoading = false;
+        await LoadAdapters(SettingsManager.Current.WiFi_InterfaceId).ConfigureAwait(false);
+        _initAdapter = false;
     }
 
     private void LoadSettings()
@@ -498,19 +573,88 @@ public class WiFiViewModel : ViewModelBase
         Show5GHzNetworks = SettingsManager.Current.WiFi_Show5GHzNetworks;
     }
 
+    private async Task ReloadAdapter(CancellationToken cancelationToken)
+    {
+        IsAdaptersLoading = true;
+
+        await Task.Delay(2000, cancelationToken); // Make the user happy, let him see a reload animation (and he cannot spam the reload command)
+
+        string id = string.Empty;
+
+        if (SelectedAdapter != null)
+            id = SelectedAdapter.NetworkInterfaceInfo.Id;
+
+        try
+        {
+            Adapters = await WiFi.GetAdapterAsync(cancelationToken);
+
+            if (Adapters.Count > 0)
+                SelectedAdapter = string.IsNullOrEmpty(id) ? Adapters.FirstOrDefault() : Adapters.FirstOrDefault(x => x.NetworkInterfaceInfo.Id == id);
+        }
+        catch (FileNotFoundException) // This exception is thrown, when the Microsoft.Windows.SDK.Contracts is not available...
+        {
+            SdkContractAvailable = false;
+        }
+
+        IsAdaptersLoading = false;
+    }
+
+    private void ChangeAutoRefreshTimerInterval(TimeSpan timeSpan)
+    {
+        _autoRefreshTimer.Interval = timeSpan;
+    }
+
+    private void StartAutoRefreshTimer()
+    {
+        ChangeAutoRefreshTimerInterval(AutoRefreshTime.CalculateTimeSpan(SelectedAutoRefreshTime));
+
+        _autoRefreshTimer.Start();
+    }
+
+    private void StopAutoRefreshTimer()
+    {
+        _autoRefreshTimer.Stop();
+    }
+
+    private void PauseAutoRefreshTimer()
+    {
+        if (!_autoRefreshTimer.IsEnabled)
+            return;
+
+        StopAutoRefreshTimer();
+    }
+
+    private void ResumeAutoRefreshTimer()
+    {
+        if (!_autoRefreshTimer.IsEnabled)
+            return;
+
+        StartAutoRefreshTimer();
+    }
+
+    public void OnViewVisible()
+    {
+        ResumeAutoRefreshTimer();
+    }
+
+    public void OnViewHide()
+    {
+        PauseAutoRefreshTimer();
+    }
+
     #endregion
 
     #region ICommands & Actions
 
-    public ICommand ReloadAdaptersCommand => new RelayCommand(_ => ReloadAdapterAction());
+    public IAsyncCommand ReloadAdaptersCommand => new AsyncCommand(() => LoadAdapters(SelectedAdapter?.NetworkInterfaceInfo.Id));
 
     private void ReloadAdapterAction()
     {
         LoadAdapters(SelectedAdapter?.NetworkInterfaceInfo.Id).ConfigureAwait(false);
     }
 
-    public ICommand ScanNetworksCommand =>
-        new RelayCommand(_ => ScanNetworksAction().ConfigureAwait(false), ScanNetworks_CanExecute);
+    public IAsyncCommand ScanNetworksCommand =>
+        new AsyncCommand(() => ScanAsync(SelectedAdapter, CancellationTokenSource.Token, true), ScanNetworks_CanExecute, continueOnCapturedContext: false);
 
     private bool ScanNetworks_CanExecute(object obj)
     {
@@ -519,35 +663,35 @@ public class WiFiViewModel : ViewModelBase
 
     private async Task ScanNetworksAction()
     {
-        await Scan(SelectedAdapter, true);
+        await ScanAsync(SelectedAdapter, CancellationTokenSource.Token, true);
     }
 
-    public ICommand ConnectCommand => new RelayCommand(_ => ConnectAction());
+    public IAsyncCommand ConnectCommand => new AsyncCommand(() => ConnectAsync(CancellationTokenSource.Token), continueOnCapturedContext: false);
 
     private void ConnectAction()
     {
-        Connect();
+        //Connect();
     }
 
-    public ICommand DisconnectCommand => new RelayCommand(_ => DisconnectAction());
+    public IAsyncCommand DisconnectCommand => new AsyncCommand(() => DisconnectAsync().WaitAsync(CancellationTokenSource.Token), continueOnCapturedContext: false);
 
-    private void DisconnectAction()
+    private async Task DisconnectAction()
     {
-        Disconnect();
+        await DisconnectAsync();
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction());
+    public IAsyncCommand ExportCommand => new AsyncCommand(() => Export().WaitAsync(CancellationTokenSource.Token), continueOnCapturedContext: false);
 
     private void ExportAction()
     {
         Export().ConfigureAwait(false);
     }
 
-    public ICommand OpenSettingsCommand => new RelayCommand(_ => OpenSettingsAction());
+    public IAsyncCommand OpenSettingsCommand => new AsyncCommand(() => OpenSettingsActionAsync(CancellationTokenSource.Token), continueOnCapturedContext: false);
 
-    private static void OpenSettingsAction()
+    private Task OpenSettingsActionAsync(CancellationToken cancellationToken)
     {
-        Launcher.LaunchUriAsync(new Uri("ms-settings:privacy-location"));
+        return Launcher.LaunchUriAsync(new Uri("ms-settings:privacy-location")).AsTask(cancellationToken);
     }
 
     #endregion
@@ -558,11 +702,14 @@ public class WiFiViewModel : ViewModelBase
     ///     Request access to the WiFi adapter.
     /// </summary>
     /// <returns>Fails if the access is denied.</returns>
-    private static bool RequestAccess()
+    private bool RequestAccess()
     {
-        var accessStatus = WiFiAdapter.RequestAccessAsync().GetAwaiter().GetResult();
+        return WiFiAdapter.RequestAccessAsync().GetAwaiter().GetResult() == WiFiAccessStatus.Allowed;
+    }
 
-        return accessStatus == WiFiAccessStatus.Allowed;
+    private Task<WiFiAccessStatus> RequestAccessAsync(CancellationToken cancellationToken)
+    {
+        return WiFiAdapter.RequestAccessAsync().AsTask(cancellationToken);
     }
 
     private async Task LoadAdapters(string adapterId = null)
@@ -574,7 +721,7 @@ public class WiFiViewModel : ViewModelBase
 
         try
         {
-            Adapters = await WiFi.GetAdapterAsync();
+            Adapters = await WiFi.GetAdapterAsync(CancellationTokenSource.Token);
         }
         catch (Exception ex)
         {
@@ -590,14 +737,14 @@ public class WiFiViewModel : ViewModelBase
             if (string.IsNullOrEmpty(adapterId))
                 SelectedAdapter = Adapters.FirstOrDefault();
             else
-                SelectedAdapter = Adapters.FirstOrDefault(s => s.NetworkInterfaceInfo.Id.ToString() == adapterId) ??
+                SelectedAdapter = Adapters.FirstOrDefault(s => s.NetworkInterfaceInfo.Id == adapterId) ??
                                   Adapters.FirstOrDefault();
         }
 
         IsAdaptersLoading = false;
     }
 
-    private async Task Scan(WiFiAdapterInfo adapterInfo, bool refreshing = false, uint delayInMs = 0)
+    private async Task ScanAsync(WiFiAdapterInfo adapterInfo, CancellationToken cancellationToken, bool refreshing = false, uint delayInMs = 0)
     {
         if (refreshing)
         {
@@ -617,12 +764,10 @@ public class WiFiViewModel : ViewModelBase
 
         try
         {
-            var wiFiNetworkScanInfo = await WiFi.GetNetworksAsync(adapterInfo.WiFiAdapter);
+            var wiFiNetworkScanInfo = await WiFi.GetNetworksAsync(adapterInfo.WiFiAdapter, cancellationToken);
 
             // Clear the values after the scan to make the UI smoother
-            Networks.Clear();
-            Radio1Series.Clear();
-            Radio2Series.Clear();
+            ClearCollections();
 
             foreach (var network in wiFiNetworkScanInfo.WiFiNetworkInfos)
             {
@@ -630,9 +775,9 @@ public class WiFiViewModel : ViewModelBase
 
                 if (WiFi.ConvertChannelFrequencyToGigahertz(network.AvailableNetwork
                         .ChannelCenterFrequencyInKilohertz) < 5) // 2.4 GHz
-                    Radio1Series.Add(GetSeriesCollection(network, WiFiRadio.One));
+                    Radio1Series = [GetSeriesCollection(network, WiFiRadio.One)];
                 else
-                    Radio2Series.Add(GetSeriesCollection(network, WiFiRadio.Two));
+                    Radio2Series = [GetSeriesCollection(network, WiFiRadio.Two)];
             }
 
             statusMessage = string.Format(Strings.LastScanAtX,
@@ -641,9 +786,7 @@ public class WiFiViewModel : ViewModelBase
         catch (Exception ex)
         {
             // Clear the existing old values if an error occurs
-            Networks.Clear();
-            Radio1Series.Clear();
-            Radio2Series.Clear();
+            ClearCollections();
 
             statusMessage = string.Format(Strings.ErrorWhileScanningWiFiAdapterXXXWithErrorXXX,
                 adapterInfo.NetworkInterfaceInfo.Name, ex.Message);
@@ -658,9 +801,16 @@ public class WiFiViewModel : ViewModelBase
         }
     }
 
-    private ChartValues<double> GetDefaultChartValues(WiFiRadio radio)
+    private void ClearCollections()
     {
-        ChartValues<double> values = new();
+        Networks.Clear();
+        Radio1Series.Clear();
+        Radio2Series.Clear();
+    }
+
+    private ObservableCollection<double> GetDefaultChartValues(WiFiRadio radio)
+    {
+        ObservableCollection<double> values = [];
 
         for (var i = 0; i < (radio == WiFiRadio.One ? Radio1Labels.Length : Radio2Labels.Length); i++)
             values.Add(-1);
@@ -668,7 +818,7 @@ public class WiFiViewModel : ViewModelBase
         return values;
     }
 
-    private ChartValues<double> GetChartValues(WiFiNetworkInfo network, WiFiRadio radio, int index)
+    private ObservableCollection<double> GetChartValues(WiFiNetworkInfo network, WiFiRadio radio, int index)
     {
         var values = GetDefaultChartValues(radio);
 
@@ -683,21 +833,20 @@ public class WiFiViewModel : ViewModelBase
         return values;
     }
 
-    private LineSeries GetSeriesCollection(WiFiNetworkInfo network, WiFiRadio radio)
+    private LineSeries<double> GetSeriesCollection(WiFiNetworkInfo network, WiFiRadio radio)
     {
         var index = Array.IndexOf(radio == WiFiRadio.One ? Radio1Labels : Radio2Labels,
             $"{WiFi.GetChannelFromChannelFrequency(network.AvailableNetwork.ChannelCenterFrequencyInKilohertz)}");
 
-        return new LineSeries
+        return new LineSeries<double>
         {
-            Title = $"{network.AvailableNetwork.Ssid} ({network.AvailableNetwork.Bssid})",
             Values = GetChartValues(network, radio, index),
-            PointGeometry = null,
-            LineSmoothness = 0
+            LineSmoothness = 0 
+            
         };
     }
 
-    private async void Connect()
+    private async Task ConnectAsync(CancellationToken cancellationToken)
     {
         var selectedAdapter = SelectedAdapter;
         var selectedNetwork = SelectedNetwork;
@@ -714,7 +863,7 @@ public class WiFiViewModel : ViewModelBase
         var exportViewModel = new WiFiConnectViewModel(async instance =>
             {
                 // Connect Open/PSK/EAP
-                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog);
+                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken);
 
                 var ssid = selectedNetwork.IsHidden ? instance.Ssid : selectedNetwork.AvailableNetwork.Ssid;
 
@@ -749,10 +898,10 @@ public class WiFiViewModel : ViewModelBase
 
                 if (selectedNetwork.IsHidden)
                     connectionResult = await WiFi.ConnectAsync(instance.Options.AdapterInfo.WiFiAdapter,
-                        instance.Options.NetworkInfo.AvailableNetwork, reconnectionKind, credential, instance.Ssid);
+                        instance.Options.NetworkInfo.AvailableNetwork, reconnectionKind, credential, cancellationToken, instance.Ssid);
                 else
                     connectionResult = await WiFi.ConnectAsync(instance.Options.AdapterInfo.WiFiAdapter,
-                        instance.Options.NetworkInfo.AvailableNetwork, reconnectionKind, credential);
+                        instance.Options.NetworkInfo.AvailableNetwork, reconnectionKind, credential, cancellationToken);
 
                 // Done connecting
                 IsConnecting = false;
@@ -768,7 +917,7 @@ public class WiFiViewModel : ViewModelBase
 
                 // Update the wifi networks.
                 // Wait because an error may occur if a refresh is done directly after connecting.            
-                await Scan(SelectedAdapter, true, 5000);
+                await ScanAsync(SelectedAdapter, CancellationToken.None, true, 5000);
             }, async instance =>
             {
                 // Connect WPS
@@ -786,9 +935,9 @@ public class WiFiViewModel : ViewModelBase
                     ? WiFiReconnectionKind.Automatic
                     : WiFiReconnectionKind.Manual;
 
-                var connectionResult = await WiFi.ConnectWpsAsync(
-                    instance.Options.AdapterInfo.WiFiAdapter, instance.Options.NetworkInfo.AvailableNetwork,
-                    reconnectionKind);
+                var connectionResult = await WiFi.ConnectWpsAsync(instance.Options.AdapterInfo.WiFiAdapter,
+                    instance.Options.NetworkInfo.AvailableNetwork,
+                    reconnectionKind, CancellationToken.None);
 
                 // Done connecting
                 IsConnecting = false;
@@ -804,9 +953,10 @@ public class WiFiViewModel : ViewModelBase
 
                 // Update the wifi networks.
                 // Wait because an error may occur if a refresh is done directly after connecting.            
-                await Scan(SelectedAdapter, true, 5000);
+                await ScanAsync(SelectedAdapter, CancellationToken.None, true, 5000);
             },
-            _ => { _dialogCoordinator.HideMetroDialogAsync(this, customDialog); }, (selectedAdapter, selectedNetwork),
+            async _ => { await _dialogCoordinator.HideMetroDialogAsync(this, customDialog); },
+            (selectedAdapter, selectedNetwork),
             connectMode);
 
         customDialog.Content = new WiFiConnectDialog
@@ -817,7 +967,7 @@ public class WiFiViewModel : ViewModelBase
         await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog);
     }
 
-    private async void Disconnect()
+    private Task DisconnectAsync()
     {
         var connectedNetwork = Networks.FirstOrDefault(x => x.IsConnected);
 
@@ -834,7 +984,7 @@ public class WiFiViewModel : ViewModelBase
         }
 
         // Refresh
-        await Scan(SelectedAdapter, true, 2500);
+        return ScanAsync(SelectedAdapter, CancellationTokenSource.Token, true, 2500);
     }
 
     private async Task Export()
@@ -880,26 +1030,20 @@ public class WiFiViewModel : ViewModelBase
         await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog);
     }
 
-    public void OnViewVisible()
-    {
-        // Temporarily stop timer...
-        if (AutoRefreshEnabled)
-            _autoRefreshTimer.Stop();
-    }
-
-    public void OnViewHide()
-    {
-        // Temporarily stop timer...
-        if (AutoRefreshEnabled)
-            _autoRefreshTimer.Stop();
-    }
-
+    
     #endregion
 
     #region Events
 
     private async void AutoRefreshTimer_Tick(object sender, EventArgs e)
     {
+        if (_initAdapter)
+        {
+            IsNetworksLoading = _isLoading = true;
+            await InitializeAdapterAsync(CancellationTokenSource.Token);
+            IsNetworksLoading = _isLoading = false;
+        }
+        
         // Don't refresh if it's already loading or connecting
         if (IsNetworksLoading || IsBackgroundSearchRunning || IsConnecting)
             return;
@@ -908,7 +1052,11 @@ public class WiFiViewModel : ViewModelBase
         _autoRefreshTimer.Stop();
 
         // Scan networks
-        await Scan(SelectedAdapter, true);
+        if (SelectedAdapter is not null)
+        {
+            await ScanAsync(SelectedAdapter, CancellationTokenSource.Token, true);
+        }
+        
 
         // Restart timer...
         _autoRefreshTimer.Start();

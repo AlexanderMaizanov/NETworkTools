@@ -108,7 +108,7 @@ public class ListenersViewModel : ViewModelBase
         }
     }
 
-    private ObservableCollection<ListenerInfo> _results = new();
+    private ObservableCollection<ListenerInfo> _results = [];
 
     public ObservableCollection<ListenerInfo> Results
     {

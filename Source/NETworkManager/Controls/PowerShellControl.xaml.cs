@@ -227,8 +227,8 @@ public partial class PowerShellControl : UserControlBase, IDragablzTabItem, IEmb
     public void ResizeEmbeddedWindow()
     {
         if (IsConnected)
-            NativeMethods.SetWindowPos(_process.MainWindowHandle, IntPtr.Zero, 0, 0, WindowHost.ClientSize.Width,
-                WindowHost.ClientSize.Height, NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE);
+            NativeMethods.SetWindowPos(_process.MainWindowHandle, IntPtr.Zero, 0, 0, Convert.ToInt32(WindowHost.ClientSize.Width), //
+                Convert.ToInt32(WindowHost.ClientSize.Height), NativeMethods.SWP_NOZORDER | NativeMethods.SWP_NOACTIVATE); //
     }
 
     private void Disconnect()

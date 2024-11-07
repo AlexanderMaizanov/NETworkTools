@@ -230,8 +230,8 @@ public static class GlobalStaticConfiguration
     public static ExportFileType SubnetCalculator_Subnetting_ExportFileType => ExportFileType.Csv;
 
     // Application: Bit Calculator
-    public static BitCaluclatorUnit BitCalculator_Unit => BitCaluclatorUnit.Bytes;
-    public static BitCaluclatorNotation BitCalculator_Notation => BitCaluclatorNotation.Binary;
+    public static BitCalculatorUnit BitCalculator_Unit => BitCalculatorUnit.Bytes;
+    public static BitCalculatorNotation BitCalculator_Notation => BitCalculatorNotation.Binary;
     public static ExportFileType BitCalculator_ExportFileType => ExportFileType.Csv;
 
     // Application: Lookup

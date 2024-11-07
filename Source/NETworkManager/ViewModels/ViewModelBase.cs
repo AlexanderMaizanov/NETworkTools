@@ -1,10 +1,13 @@
-﻿using System.Windows.Input;
+﻿using System.Threading;
+using System.Windows.Input;
 using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
 public abstract class ViewModelBase : PropertyChangedBase
 {
+
+    public CancellationTokenSource CancellationTokenSource = new();
     public ICommand CopyDataToClipboardCommand => new RelayCommand(CopyDataToClipboardAction);
 
     private static void CopyDataToClipboardAction(object data)

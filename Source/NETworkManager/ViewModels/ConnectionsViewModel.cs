@@ -4,11 +4,13 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using AsyncAwaitBestPractices;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using NETworkManager.Localization;
@@ -30,6 +32,9 @@ public class ConnectionsViewModel : ViewModelBase
         _isLoading = true;
 
         _dialogCoordinator = instance;
+        using var _cts = new CancellationTokenSource();
+        _cancellationToken = _cts.Token;
+
 
         // Result view + search
         ResultsView = CollectionViewSource.GetDefaultView(Results);
@@ -60,7 +65,7 @@ public class ConnectionsViewModel : ViewModelBase
         };
 
         // Get connections
-        Refresh().ConfigureAwait(false);
+        Refresh(_cancellationToken).SafeFireAndForget();
 
         // Auto refresh
         _autoRefreshTimer.Tick += AutoRefreshTimer_Tick;
@@ -84,17 +89,16 @@ public class ConnectionsViewModel : ViewModelBase
         _autoRefreshTimer.Stop();
 
         // Refresh
-        await Refresh();
+        await Refresh(_cancellationToken);
 
         // Restart timer...
         _autoRefreshTimer.Start();
     }
 
     #endregion
-
     #region Variables
-
     private readonly IDialogCoordinator _dialogCoordinator;
+    private readonly CancellationToken _cancellationToken;
 
     private readonly bool _isLoading;
     private readonly DispatcherTimer _autoRefreshTimer = new();
@@ -117,7 +121,7 @@ public class ConnectionsViewModel : ViewModelBase
         }
     }
 
-    private ObservableCollection<ConnectionInfo> _results = new();
+    private ObservableCollection<ConnectionInfo> _results = [];
 
     public ObservableCollection<ConnectionInfo> Results
     {
@@ -270,23 +274,23 @@ public class ConnectionsViewModel : ViewModelBase
 
     #region ICommands & Actions
 
-    public ICommand RefreshCommand => new RelayCommand(_ => RefreshAction().ConfigureAwait(false), Refresh_CanExecute);
+    public ICommand RefreshCommand => new RelayCommand(async _ => await RefreshAction(_cancellationToken), Refresh_CanExecute);
 
     private bool Refresh_CanExecute(object parameter)
     {
         return Application.Current.MainWindow != null && !((MetroWindow)Application.Current.MainWindow).IsAnyDialogOpen;
     }
 
-    private async Task RefreshAction()
+    private async Task RefreshAction(CancellationToken token)
     {
         IsStatusMessageDisplayed = false;
 
-        await Refresh();
+        await Refresh(token);
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction().ConfigureAwait(false));
+    public ICommand ExportCommand => new RelayCommand(async _ => await ExportAction(_cancellationToken));
 
-    private async Task ExportAction()
+    private async Task ExportAction(CancellationToken cancellationToken)
     {
         var customDialog = new CustomDialog
         {
@@ -328,20 +332,23 @@ public class ConnectionsViewModel : ViewModelBase
             DataContext = exportViewModel
         };
 
-        await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog);
+        await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken);
     }
 
     #endregion
 
     #region Methods
 
-    private async Task Refresh()
+    private async Task Refresh(CancellationToken cancellationToken)
     {
         IsRefreshing = true;
 
         Results.Clear();
 
-        (await Connection.GetActiveTcpConnectionsAsync()).ForEach(x => Results.Add(x));
+        await foreach(var con in Connection.GetActiveTcpConnectionsAsync(cancellationToken))
+        {
+            Results.Add(con);
+        }
 
         IsRefreshing = false;
     }

@@ -8,7 +8,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:viewModels="clr-namespace:NETworkManager.ViewModels"
-             xmlns:liveChart="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
+             xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView;assembly=LiveChartsCore.SkiaSharpView"
+             xmlns:liveChart="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
              xmlns:controls="clr-namespace:NETworkManager.Controls"
              xmlns:controls2="clr-namespace:NETworkManager.Controls;assembly=NETworkManager.Controls"
              xmlns:loadingIndicators="clr-namespace:LoadingIndicators.WPF;assembly=LoadingIndicators.WPF"
@@ -657,20 +658,22 @@
                                 </Grid.RowDefinitions>
                                 <TextBlock Grid.Row="0" Text="{x:Static Member=localization:Strings.GHz2dot4}"
                                            Style="{StaticResource ResourceKey=HeaderTextBlock}" />
-                                <liveChart:CartesianChart Grid.Row="1" Series="{Binding Path=Radio1Series}"
-                                                          LegendLocation="Bottom" DisableAnimations="True">
-                                    <liveChart:CartesianChart.DataTooltip>
+                                <liveChart:CartesianChart Grid.Row="1" LegendPosition="Bottom" 
+                                                          Series="{Binding Path=Radio1Series}"
+                                                          XAxes="{Binding Radion1XAxes}" 
+                                                          YAxes="{Binding Radion1YAxes}">
+                                    <!--<liveChart:CartesianChart.DataTooltip>
                                         <controls:LvlChartsWiFiChannelTooltip Background="Transparent" />
-                                    </liveChart:CartesianChart.DataTooltip>
-                                    <liveChart:CartesianChart.AxisX>
-                                        <liveChart:Axis Title="{x:Static Member=localization:Strings.Channel}"
+                                    </liveChart:CartesianChart.DataTooltip>-->
+                                    <!--<liveChart:CartesianChart.XAxes >
+                                        <lvc:Axis Title="{x:Static Member=localization:Strings.Channel}"
                                                         MinValue="0"
                                                         MaxValue="16" Labels="{Binding Path=Radio1Labels}">
                                             <liveChart:Axis.Separator>
                                                 <liveChart:Separator Step="1" StrokeThickness="0" />
                                             </liveChart:Axis.Separator>
-                                        </liveChart:Axis>
-                                    </liveChart:CartesianChart.AxisX>
+                                        </lvc:Axis>
+                                    </liveChart:CartesianChart.XAxes>
                                     <liveChart:CartesianChart.AxisY>
                                         <liveChart:Axis Title="{x:Static Member=localization:Strings.SignalStrength}"
                                                         MaxValue="100" MinValue="0"
@@ -703,16 +706,16 @@
                                                 </liveChart:AxisSection>
                                             </liveChart:Axis.Sections>
                                         </liveChart:Axis>
-                                    </liveChart:CartesianChart.AxisY>
+                                    </liveChart:CartesianChart.AxisY>-->
                                 </liveChart:CartesianChart>
                                 <TextBlock Grid.Row="3" Text="{x:Static Member=localization:Strings.GHz5}"
                                            Style="{StaticResource ResourceKey=HeaderTextBlock}" />
                                 <liveChart:CartesianChart Grid.Row="4" Series="{Binding Path=Radio2Series}"
-                                                          LegendLocation="Bottom" DisableAnimations="True">
-                                    <liveChart:CartesianChart.DataTooltip>
+                                                          LegendPosition="Bottom" >
+                                    <!--<liveChart:CartesianChart.DataTooltip>
                                         <controls:LvlChartsWiFiChannelTooltip Background="Transparent" />
-                                    </liveChart:CartesianChart.DataTooltip>
-                                    <liveChart:CartesianChart.AxisX>
+                                    </liveChart:CartesianChart.DataTooltip>-->
+                                    <!--<liveChart:CartesianChart.XAxes>
                                         <liveChart:Axis Title="{x:Static Member=localization:Strings.Channel}"
                                                         MinValue="0"
                                                         MaxValue="32" Labels="{Binding Path=Radio2Labels}">
@@ -720,8 +723,8 @@
                                                 <liveChart:Separator Step="1" StrokeThickness="0" />
                                             </liveChart:Axis.Separator>
                                         </liveChart:Axis>
-                                    </liveChart:CartesianChart.AxisX>
-                                    <liveChart:CartesianChart.AxisY>
+                                    </liveChart:CartesianChart.XAxes>-->
+                                    <!--<liveChart:CartesianChart.AxisY>
                                         <liveChart:Axis Title="{x:Static Member=localization:Strings.SignalStrength}"
                                                         MaxValue="100" MinValue="0"
                                                         LabelFormatter="{Binding Path=FormattedDbm}">
@@ -753,7 +756,7 @@
                                                 </liveChart:AxisSection>
                                             </liveChart:Axis.Sections>
                                         </liveChart:Axis>
-                                    </liveChart:CartesianChart.AxisY>
+                                    </liveChart:CartesianChart.AxisY>-->
                                 </liveChart:CartesianChart>
                             </Grid>
                         </Grid>

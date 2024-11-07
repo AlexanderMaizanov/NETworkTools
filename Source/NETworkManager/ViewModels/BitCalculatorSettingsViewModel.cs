@@ -12,11 +12,11 @@ public class BitCalculatorSettingsViewModel : ViewModelBase
 
     private readonly bool _isLoading;
 
-    public List<BitCaluclatorNotation> Notations { get; private set; }
+    public List<BitCalculatorNotation> Notations { get; private set; }
 
-    private BitCaluclatorNotation _notation;
+    private BitCalculatorNotation _notation;
 
-    public BitCaluclatorNotation Notation
+    public BitCalculatorNotation Notation
     {
         get => _notation;
         set
@@ -49,7 +49,7 @@ public class BitCalculatorSettingsViewModel : ViewModelBase
 
     private void LoadSettings()
     {
-        Notations = Enum.GetValues(typeof(BitCaluclatorNotation)).Cast<BitCaluclatorNotation>()
+        Notations = Enum.GetValues(typeof(BitCalculatorNotation)).Cast<BitCalculatorNotation>()
             .OrderBy(x => x.ToString()).ToList();
         Notation = Notations.First(x => x == SettingsManager.Current.BitCalculator_Notation);
     }

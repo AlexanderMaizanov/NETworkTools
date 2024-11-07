@@ -19,6 +19,7 @@ public class PortInfo
         LookupInfo = lookupInfo;
         State = state;
     }
+    public PortInfo() { State = PortState.None; }
 
     /// <summary>
     ///     Port number.

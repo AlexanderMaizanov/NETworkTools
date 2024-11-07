@@ -88,7 +88,7 @@ public sealed class Traceroute
 
                     if (_options.ResolveHostname && ipAddressHop != null)
                     {
-                        var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddressHop);
+                        var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddressHop, cancellationToken);
 
                         if (!dnsResult.HasError)
                             hostname = dnsResult.Value;

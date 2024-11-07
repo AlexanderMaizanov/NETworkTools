@@ -96,7 +96,6 @@ public static class OUILookup
     /// </summary>
     /// <param name="vendor">Vendor to look up.</param>
     /// <returns><see cref="OUIInfo" /> or null if not found.</returns>
-    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     public static List<OUIInfo> SearchByVendor(string vendor)
     {
         return (from info in OUIInfoList
@@ -120,7 +119,6 @@ public static class OUILookup
     /// </summary>
     /// <param name="vendors">Vendors to look up.</param>
     /// <returns>List of <see cref="OUIInfo" />. Empty if nothing was found.</returns>
-    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     public static List<OUIInfo> SearchByVendors(IReadOnlyCollection<string> vendors)
     {
         return (from info in OUIInfoList

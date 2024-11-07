@@ -29,8 +29,6 @@ public class PortScannerViewModel : ViewModelBase
 
     private readonly IDialogCoordinator _dialogCoordinator;
 
-    private CancellationTokenSource _cancellationTokenSource;
-
     private readonly Guid _tabId;
     private bool _firstLoad = true;
     private bool _closed;
@@ -250,13 +248,13 @@ public class PortScannerViewModel : ViewModelBase
     {
     }
 
-    public void OnLoaded()
+    public async void OnLoaded()
     {
         if (!_firstLoad)
             return;
 
         if (!string.IsNullOrEmpty(Host) && !string.IsNullOrEmpty(Ports))
-            Start().ConfigureAwait(false);
+            await Start(CancellationTokenSource.Token);
 
         _firstLoad = false;
     }
@@ -295,7 +293,7 @@ public class PortScannerViewModel : ViewModelBase
         OpenPortProfileSelection().ConfigureAwait(false);
     }
 
-    public ICommand ScanCommand => new RelayCommand(_ => ScanAction(), Scan_CanExecute);
+    public ICommand ScanCommand => new RelayCommand(async _ => await ScanAction(CancellationTokenSource.Token).ConfigureAwait(false), Scan_CanExecute);
 
     private bool Scan_CanExecute(object parameter)
     {
@@ -303,19 +301,19 @@ public class PortScannerViewModel : ViewModelBase
                !((MetroWindow)Application.Current.MainWindow).IsAnyDialogOpen;
     }
 
-    private void ScanAction()
+    private Task ScanAction(CancellationToken cancellationToken)
     {
-        if (IsRunning)
-            Stop();
-        else
-            Start().ConfigureAwait(false);
+        if (!IsRunning)
+            return Start(cancellationToken);
+        Stop();
+        return Task.CompletedTask;
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction());
+    public ICommand ExportCommand => new RelayCommand(async _ => await ExportAction(CancellationTokenSource.Token).ConfigureAwait(false));
 
-    private void ExportAction()
+    private Task ExportAction(CancellationToken cancellationToken)
     {
-        Export().ConfigureAwait(false);
+        return ExportAsync(cancellationToken);
     }
 
     #endregion
@@ -346,7 +344,7 @@ public class PortScannerViewModel : ViewModelBase
         await _dialogCoordinator.ShowMetroDialogAsync(window, customDialog);
     }
 
-    private async Task Start()
+    private async Task Start(CancellationToken cancellationToken)
     {
         IsStatusMessageDisplayed = false;
         StatusMessage = string.Empty;
@@ -358,15 +356,13 @@ public class PortScannerViewModel : ViewModelBase
 
         DragablzTabItem.SetTabHeader(_tabId, Host);
 
-        _cancellationTokenSource = new CancellationTokenSource();
-
         // Resolve hostnames
         (List<(IPAddress ipAddress, string hostname)> hosts, List<string> hostnamesNotResolved) hosts;
 
         try
         {
             hosts = await HostRangeHelper.ResolveAsync(HostRangeHelper.CreateListFromInput(Host),
-                SettingsManager.Current.Network_ResolveHostnamePreferIPv4, _cancellationTokenSource.Token);
+                SettingsManager.Current.Network_ResolveHostnamePreferIPv4, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -383,7 +379,7 @@ public class PortScannerViewModel : ViewModelBase
         }
 
         // Convert ports to int array
-        var ports = await PortRangeHelper.ConvertPortRangeToIntArrayAsync(Ports);
+        var ports = await PortRangeHelper.ConvertPortRangeToIntArrayAsync(Ports).WaitAsync(cancellationToken);
 
         PortsToScan = ports.Length * hosts.hosts.Count;
         PortsScanned = 0;
@@ -407,16 +403,16 @@ public class PortScannerViewModel : ViewModelBase
         portScanner.ProgressChanged += ProgressChanged;
         portScanner.UserHasCanceled += UserHasCanceled;
 
-        portScanner.ScanAsync(hosts.hosts, ports, _cancellationTokenSource.Token);
+        await portScanner.ScanAsync(hosts.hosts, ports, cancellationToken).ConfigureAwait(false);
     }
 
     private void Stop()
     {
         IsCanceling = true;
-        _cancellationTokenSource.Cancel();
+        CancellationTokenSource.Cancel();
     }
 
-    private async Task Export()
+    private async Task ExportAsync(CancellationToken cancellationToken)
     {
         var window = Application.Current.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive);
 
@@ -427,7 +423,7 @@ public class PortScannerViewModel : ViewModelBase
 
         var exportViewModel = new ExportViewModel(async instance =>
             {
-                await _dialogCoordinator.HideMetroDialogAsync(window, customDialog);
+                await _dialogCoordinator.HideMetroDialogAsync(window, customDialog).WaitAsync(cancellationToken);
 
                 try
                 {
@@ -444,12 +440,12 @@ public class PortScannerViewModel : ViewModelBase
 
                     await _dialogCoordinator.ShowMessageAsync(window, Strings.Error,
                         Strings.AnErrorOccurredWhileExportingTheData + Environment.NewLine +
-                        Environment.NewLine + ex.Message, MessageDialogStyle.Affirmative, settings);
+                        Environment.NewLine + ex.Message, MessageDialogStyle.Affirmative, settings).WaitAsync(cancellationToken);
                 }
 
                 SettingsManager.Current.PortScanner_ExportFileType = instance.FileType;
                 SettingsManager.Current.PortScanner_ExportFilePath = instance.FilePath;
-            }, _ => { _dialogCoordinator.HideMetroDialogAsync(window, customDialog); },
+            }, _ => { _dialogCoordinator.HideMetroDialogAsync(window, customDialog).WaitAsync(cancellationToken); },
             [ExportFileType.Csv, ExportFileType.Xml, ExportFileType.Json],
             true,
             SettingsManager.Current.PortScanner_ExportFileType, SettingsManager.Current.PortScanner_ExportFilePath);
@@ -459,7 +455,7 @@ public class PortScannerViewModel : ViewModelBase
             DataContext = exportViewModel
         };
 
-        await _dialogCoordinator.ShowMetroDialogAsync(window, customDialog);
+        await _dialogCoordinator.ShowMetroDialogAsync(window, customDialog).WaitAsync(cancellationToken);
     }
 
     private void AddHostToHistory(string host)
@@ -469,8 +465,12 @@ public class PortScannerViewModel : ViewModelBase
             SettingsManager.Current.General_HistoryListEntries);
 
         // Clear the old items
-        SettingsManager.Current.PortScanner_HostHistory.Clear();
-        OnPropertyChanged(nameof(Host)); // Raise property changed again, after the collection has been cleared
+        Dispatcher.CurrentDispatcher.Invoke(() => 
+        {
+            SettingsManager.Current.PortScanner_HostHistory.Clear();
+            OnPropertyChanged(nameof(Host)); // Raise property changed again, after the collection has been cleared
+        });
+        
 
         // Fill with the new items
         list.ForEach(x => SettingsManager.Current.PortScanner_HostHistory.Add(x));
@@ -496,7 +496,7 @@ public class PortScannerViewModel : ViewModelBase
 
     private void PortScanned(object sender, PortScannerPortScannedArgs e)
     {
-        Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal,
+        Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.DataBind,
             new Action(delegate { Results.Add(e.Args); }));
     }
 

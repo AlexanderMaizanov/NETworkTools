@@ -3,7 +3,7 @@
 /// <summary>
 ///     Represents the notation which is used to calculate.
 /// </summary>
-public enum BitCaluclatorNotation
+public enum BitCalculatorNotation
 {
     /// <summary>
     ///     Binary base is 1024.

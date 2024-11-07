@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NETworkManager.Models.Network;
 
@@ -7,6 +9,15 @@ namespace NETworkManager.Models.Network;
 /// </summary>
 public class IPScannerHostInfo
 {
+    public IPScannerHostInfo(string hostname, PingInfo pingInfo, NetBIOSInfo netBIOSInfo)
+    { 
+        IsAnyPortOpen = false;
+        IsReachable = false;
+        Hostname = hostname;
+        PingInfo = pingInfo;
+        NetBIOSInfo = netBIOSInfo;
+        MACAddress = netBIOSInfo?.MACAddress ?? string.Empty;
+    }
     /// <summary>
     ///     Creates a new instance of <see cref="IPScannerHostInfo" /> with the specified parameters.
     /// </summary>
@@ -66,7 +77,7 @@ public class IPScannerHostInfo
     /// <summary>
     ///     List of open ports.
     /// </summary>
-    public List<PortInfo> Ports { get; set; }
+    public List<PortInfo> Ports { get; set; } = [];
 
     /// <summary>
     ///     NetBIOS information about the host.

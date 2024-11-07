@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 using NETworkManager.Utilities;
@@ -26,9 +27,9 @@ public sealed class NetworkInterface
 
     #region Methods
 
-    public static Task<List<NetworkInterfaceInfo>> GetNetworkInterfacesAsync()
+    public static Task<List<NetworkInterfaceInfo>> GetNetworkInterfacesAsync(CancellationToken cancellationToken)
     {
-        return Task.Run(GetNetworkInterfaces);
+        return Task.Run(GetNetworkInterfaces, cancellationToken);
     }
 
     public static List<NetworkInterfaceInfo> GetNetworkInterfaces()
@@ -206,9 +207,9 @@ public sealed class NetworkInterface
         return null;
     }
 
-    public Task ConfigureNetworkInterfaceAsync(NetworkInterfaceConfig config)
+    public Task ConfigureNetworkInterfaceAsync(NetworkInterfaceConfig config, CancellationToken cancellationToken)
     {
-        return Task.Run(() => ConfigureNetworkInterface(config));
+        return Task.Run(() => ConfigureNetworkInterface(config), cancellationToken);
     }
 
     private void ConfigureNetworkInterface(NetworkInterfaceConfig config)
@@ -249,9 +250,9 @@ public sealed class NetworkInterface
     ///     Flush the DNS cache asynchronously.
     /// </summary>
     /// <returns>Running task.</returns>
-    public static Task FlushDnsAsync()
+    public static Task FlushDnsAsync(CancellationToken cancellationToken)
     {
-        return Task.Run(FlushDns);
+        return Task.Run(FlushDns, cancellationToken);
     }
 
     /// <summary>
@@ -304,9 +305,9 @@ public sealed class NetworkInterface
     /// </summary>
     /// <param name="config">Ethernet adapter name, IP address and subnetmask.</param>
     /// <returns>Running task.</returns>
-    public static Task AddIPAddressToNetworkInterfaceAsync(NetworkInterfaceConfig config)
+    public static Task AddIPAddressToNetworkInterfaceAsync(NetworkInterfaceConfig config, CancellationToken cancellationToken)
     {
-        return Task.Run(() => AddIPAddressToNetworkInterface(config));
+        return Task.Run(() => AddIPAddressToNetworkInterface(config), cancellationToken);
     }
 
     /// <summary>
@@ -330,9 +331,9 @@ public sealed class NetworkInterface
     /// </summary>
     /// <param name="config">Ethernet adapter name, IP address</param>
     /// <returns>Running task.</returns>
-    public static Task RemoveIPAddressFromNetworkInterfaceAsync(NetworkInterfaceConfig config)
+    public static Task RemoveIPAddressFromNetworkInterfaceAsync(NetworkInterfaceConfig config, CancellationToken cancellationToken)
     {
-        return Task.Run(() => RemoveIPAddressFromNetworkInterface(config));
+        return Task.Run(() => RemoveIPAddressFromNetworkInterface(config), cancellationToken);
     }
 
     /// <summary>

@@ -35,8 +35,6 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
 
     private readonly IDialogCoordinator _dialogCoordinator;
 
-    private CancellationTokenSource _cancellationTokenSource;
-
     private readonly Guid _tabId;
     private bool _firstLoad = true;
     private bool _closed;
@@ -251,13 +249,13 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
             IPAddressHelper.CompareIPAddresses(x.PingInfo.IPAddress, y.PingInfo.IPAddress));
     }
 
-    public void OnLoaded()
+    public async Task OnLoaded()
     {
         if (!_firstLoad)
             return;
 
         if (!string.IsNullOrEmpty(Host))
-            Start().ConfigureAwait(false);
+            await Start().ConfigureAwait(false);
 
         _firstLoad = false;
     }
@@ -378,15 +376,13 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
 
         DragablzTabItem.SetTabHeader(_tabId, Host);
 
-        _cancellationTokenSource = new CancellationTokenSource();
-
         // Resolve hostnames
         (List<(IPAddress ipAddress, string hostname)> hosts, List<string> hostnamesNotResolved) hosts;
 
         try
         {
             hosts = await HostRangeHelper.ResolveAsync(HostRangeHelper.CreateListFromInput(Host),
-                SettingsManager.Current.Network_ResolveHostnamePreferIPv4, _cancellationTokenSource.Token);
+                SettingsManager.Current.Network_ResolveHostnamePreferIPv4, CancellationTokenSource.Token);
         }
         catch (OperationCanceledException)
         {
@@ -427,17 +423,18 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         ));
 
         ipScanner.HostScanned += HostScanned;
-        ipScanner.ScanComplete += ScanComplete;
+        ipScanner.ScanComplete += ScanCompleted;
         ipScanner.ProgressChanged += ProgressChanged;
         ipScanner.UserHasCanceled += UserHasCanceled;
 
-        ipScanner.ScanAsync(hosts.hosts, _cancellationTokenSource.Token);
+        await ipScanner.ScanAsync(hosts.hosts, CancellationTokenSource.Token).ConfigureAwait(false);
     }
 
     private void Stop()
     {
         IsCanceling = true;
-        _cancellationTokenSource.Cancel();
+        CancellationTokenSource.Cancel();
+        ScanCompleted(null,null);
     }
 
     private async Task DetectIPRange()
@@ -452,7 +449,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
             var subnetmaskDetected = false;
 
             // Get subnetmask, based on ip address
-            foreach (var networkInterface in (await NetworkInterface.GetNetworkInterfacesAsync()).Where(
+            foreach (var networkInterface in (await NetworkInterface.GetNetworkInterfacesAsync(CancellationTokenSource.Token)).Where(
                          networkInterface => networkInterface.IPv4Address.Any(x => x.Item1.Equals(localIP))))
             {
                 subnetmaskDetected = true;
@@ -607,7 +604,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         HostsScanned = e.Value;
     }
 
-    private void ScanComplete(object sender, EventArgs e)
+    private void ScanCompleted(object sender, EventArgs e)
     {
         if (Results.Count == 0)
         {

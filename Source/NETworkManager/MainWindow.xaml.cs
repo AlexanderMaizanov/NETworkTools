@@ -11,6 +11,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
@@ -70,7 +71,7 @@ public sealed partial class MainWindow : INotifyPropertyChanged
             // Update DNS server if changed in the settings
             case nameof(SettingsInfo.Network_UseCustomDNSServer):
             case nameof(SettingsInfo.Network_CustomDNSServer):
-                ConfigureDNSServer();
+                ConfigureDNS();
 
                 break;
 
@@ -466,8 +467,8 @@ public sealed partial class MainWindow : INotifyPropertyChanged
         // Load and change appearance
         AppearanceManager.Load();
 
-        // Load and configure DNS server
-        ConfigureDNSServer();
+        // Load and configure DNS
+        ConfigureDNS();
 
         // Set window title
         Title = $"NETworkManager {AssemblyManager.Current.Version}";
@@ -700,8 +701,8 @@ public sealed partial class MainWindow : INotifyPropertyChanged
 
         // Select the application
         // Set application via command line, or select the default one, fallback to the first visible one
-        var applicationList = Applications.Cast<ApplicationInfo>().ToArray();
-        
+        var applicationList = Applications.Cast<ApplicationInfo>();
+
         if (CommandLineManager.Current.Application != ApplicationName.None)
             SelectedApplication = applicationList.FirstOrDefault(x => x.Name == CommandLineManager.Current.Application);
         else
@@ -1248,18 +1249,18 @@ public sealed partial class MainWindow : INotifyPropertyChanged
         FlyoutRunCommandIsOpen = true;
     }
 
-    public ICommand RunCommandDoCommand => new RelayCommand(_ => RunCommandDoAction());
+    public ICommand RunCommandDoCommand => new RelayCommand(async _ => await RunCommandDoAction());
 
-    private void RunCommandDoAction()
+    private async Task RunCommandDoAction()
     {
-        RunCommandDo();
+        await RunCommandDoAsync();
     }
 
-    public ICommand RunCommandCloseCommand => new RelayCommand(_ => RunCommandCloseAction());
+    public ICommand RunCommandCloseCommand => new RelayCommand(async _ => await RunCommandCloseAction());
 
-    private void RunCommandCloseAction()
+    private async Task RunCommandCloseAction()
     {
-        RunCommandFlyoutClose().ConfigureAwait(false);
+        await RunCommandFlyoutClose();
     }
 
     #endregion
@@ -1297,11 +1298,11 @@ public sealed partial class MainWindow : INotifyPropertyChanged
     /// <summary>
     ///     Execute the selected run command.
     /// </summary>
-    private void RunCommandDo()
+    private async Task RunCommandDoAsync()
     {
         // Do nothing if no command is selected
         if (SelectedRunCommand == null)
-            return;
+            await Task.CompletedTask;
 
         // Do the command
         switch (SelectedRunCommand.Type)
@@ -1321,7 +1322,7 @@ public sealed partial class MainWindow : INotifyPropertyChanged
         }
 
         // Close the flyout
-        RunCommandFlyoutClose(true).ConfigureAwait(false);
+        await RunCommandFlyoutClose(true).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -1340,7 +1341,7 @@ public sealed partial class MainWindow : INotifyPropertyChanged
         // Clear the search
         if (clearSearch)
         {
-            await Task.Delay(500); // Wait for the animation to finish
+            await Task.Delay(500).ConfigureAwait(false); // Wait for the animation to finish
             RunCommandSearch = string.Empty;
         }
     }
@@ -1349,18 +1350,18 @@ public sealed partial class MainWindow : INotifyPropertyChanged
 
     #region Events
 
-    private void ListViewRunCommand_OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private async void ListViewRunCommand_OnPreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        RunCommandDo();
+        await RunCommandDoAsync().ConfigureAwait(ConfigureAwaitOptions.None);
     }
 
-    private void FlyoutRunCommand_IsKeyboardFocusWithinChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private async void FlyoutRunCommand_IsKeyboardFocusWithinChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         // Close flyout if the focus is lost.
         if (e.NewValue is not false)
             return;
 
-        RunCommandFlyoutClose().ConfigureAwait(false);
+        await RunCommandFlyoutClose().ConfigureAwait(ConfigureAwaitOptions.None);
     }
 
     #endregion
@@ -1542,9 +1543,7 @@ public sealed partial class MainWindow : INotifyPropertyChanged
     private void CheckForUpdates()
     {
         var updater = new Updater();
-        
         updater.UpdateAvailable += Updater_UpdateAvailable;
-        
         updater.CheckOnGitHub(Properties.Resources.NETworkManager_GitHub_User,
             Properties.Resources.NETworkManager_GitHub_Repo, AssemblyManager.Current.Version,
             SettingsManager.Current.Update_CheckForPreReleases);
@@ -1875,9 +1874,9 @@ public sealed partial class MainWindow : INotifyPropertyChanged
         Activate();
     }
 
-    private void ConfigureDNSServer()
+    private void ConfigureDNS()
     {
-        Log.Info("Configure application DNS servers...");
+        Log.Info("Configure application DNS...");
 
         DNSClientSettings dnsSettings = new();
 
@@ -1887,9 +1886,10 @@ public sealed partial class MainWindow : INotifyPropertyChanged
             {
                 Log.Info($"Use custom DNS servers ({SettingsManager.Current.Network_CustomDNSServer})...");
 
-                List<(string Server, int Port)> dnsServers = SettingsManager.Current.Network_CustomDNSServer.Split(";")
-                    .Select(dnsServer => (dnsServer, 53))
-                    .ToList();
+                List<(string Server, int Port)> dnsServers = new();
+
+                foreach (var dnsServer in SettingsManager.Current.Network_CustomDNSServer.Split(";"))
+                    dnsServers.Add((dnsServer, 53));
 
                 dnsSettings.UseCustomDNSServers = true;
                 dnsSettings.DNSServers = dnsServers;
@@ -1897,15 +1897,22 @@ public sealed partial class MainWindow : INotifyPropertyChanged
             else
             {
                 Log.Info(
-                    $"Custom DNS servers could not be set (Setting \"{nameof(SettingsManager.Current.Network_CustomDNSServer)}\" has value \"{SettingsManager.Current.Network_CustomDNSServer}\")! Fallback to Windows default DNS servers...");
+                    $"Custom DNS servers could not be set (Setting \"{nameof(SettingsManager.Current.Network_CustomDNSServer)}\" has value \"{SettingsManager.Current.Network_CustomDNSServer}\")! Fallback to Windows DNS servers...");
             }
         }
         else
         {
-            Log.Info("Use Windows default DNS servers...");
+            Log.Info("Use Windows DNS servers...");
         }
 
         DNSClient.GetInstance().Configure(dnsSettings);
+    }
+
+    private void UpdateDNS()
+    {
+        Log.Info("Update Windows DNS servers...");
+
+        DNSClient.GetInstance().UpdateFromWindows();
     }
 
     private void WriteDefaultPowerShellProfileToRegistry()
@@ -1913,7 +1920,7 @@ public sealed partial class MainWindow : INotifyPropertyChanged
         if (!SettingsManager.Current.Appearance_PowerShellModifyGlobalProfile)
             return;
 
-        HashSet<string> paths = [];
+        HashSet<string> paths = new();
 
         // PowerShell
         if (!string.IsNullOrEmpty(SettingsManager.Current.PowerShell_ApplicationFilePath) &&
@@ -1952,20 +1959,12 @@ public sealed partial class MainWindow : INotifyPropertyChanged
 
         // Update DNS server if network changed
         if (!SettingsManager.Current.Network_UseCustomDNSServer)
-        {
-            Log.Info("Update Windows default DNS servers...");
-            DNSClient.GetInstance().UpdateWindowsDNSSever();
-        }
+            UpdateDNS();
 
         // Show status window on network change
         if (SettingsManager.Current.Status_ShowWindowOnNetworkChange)
-        {
-            await Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(delegate
-            {
-                OpenStatusWindow(true);
-            }));
-        }
-    
+            await Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(delegate { OpenStatusWindow(true); }));
+
         _isNetworkChanging = false;
     }
 

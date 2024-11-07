@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
-using LiveCharts;
-using LiveCharts.Configurations;
-using LiveCharts.Wpf;
+using AsyncAwaitBestPractices;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore;
 using MahApps.Metro.Controls.Dialogs;
 using NETworkManager.Localization.Resources;
 using NETworkManager.Models.Export;
@@ -239,19 +239,19 @@ public class PingMonitorViewModel : ViewModelBase
 
     private void InitialTimeChart()
     {
-        var dayConfig = Mappers.Xy<LvlChartsDefaultInfo>()
-            .X(dayModel => (double)dayModel.DateTime.Ticks / TimeSpan.FromHours(1).Ticks)
-            .Y(dayModel => dayModel.Value);
+        //var dayConfig = Mappers.Xy<LvlChartsDefaultInfo>()
+        //    .X(dayModel => (double)dayModel.DateTime.Ticks / TimeSpan.FromHours(1).Ticks)
+        //    .Y(dayModel => dayModel.Value);
 
-        Series = new SeriesCollection(dayConfig)
-        {
-            new LineSeries
+        Series =
+        [
+            new LineSeries<LvlChartsDefaultInfo>
             {
-                Title = "Time",
-                Values = new ChartValues<LvlChartsDefaultInfo>(),
-                PointGeometry = null
+                Name = "Time",
+                Values = [],
+                Mapping = (day, index) => new ((double)day.DateTime.Ticks / TimeSpan.FromHours(1).Ticks, day.Value)
             }
-        };
+        ];
 
         FormatterDate = value =>
             DateTimeHelper.DateTimeToTimeString(new DateTime((long)(value * TimeSpan.FromHours(1).Ticks)));
@@ -260,7 +260,14 @@ public class PingMonitorViewModel : ViewModelBase
 
     public Func<double, string> FormatterDate { get; set; }
     public Func<double, string> FormatterPingTime { get; set; }
-    public SeriesCollection Series { get; set; }
+    public ObservableCollection<ISeries> Series { get; set; } =
+    [
+        new LineSeries<double>
+        {
+            Values = [],
+            Fill = null
+        }
+    ];
 
     private string _errorMessage;
 
@@ -352,13 +359,9 @@ public class PingMonitorViewModel : ViewModelBase
 
         _cancellationTokenSource = new CancellationTokenSource();
 
-        var ping = new Ping
+        var ping = new Ping(SettingsManager.Current.PingMonitor_WaitTime, SettingsManager.Current.PingMonitor_Timeout, SettingsManager.Current.PingMonitor_TTL, SettingsManager.Current.PingMonitor_DontFragment)
         {
-            Timeout = SettingsManager.Current.PingMonitor_Timeout,
-            Buffer = new byte[SettingsManager.Current.PingMonitor_Buffer],
-            TTL = SettingsManager.Current.PingMonitor_TTL,
-            DontFragment = SettingsManager.Current.PingMonitor_DontFragment,
-            WaitTime = SettingsManager.Current.PingMonitor_WaitTime
+            Buffer = new byte[SettingsManager.Current.PingMonitor_Buffer]
         };
 
         ping.PingReceived += Ping_PingReceived;
@@ -366,7 +369,7 @@ public class PingMonitorViewModel : ViewModelBase
         ping.HostnameResolved += Ping_HostnameResolved;
         ping.UserHasCanceled += Ping_UserHasCanceled;
 
-        ping.SendAsync(IPAddress, _cancellationTokenSource.Token);
+        ping.SendAsync(IPAddress, _cancellationTokenSource.Token).SafeFireAndForget();
     }
 
     public void Stop()
@@ -382,7 +385,7 @@ public class PingMonitorViewModel : ViewModelBase
         if (Series == null)
             return;
 
-        Series[0].Values.Clear();
+        Series[0].Values = new ObservableCollection<LvlChartsDefaultInfo>();
 
         var currentDateTime = DateTime.Now;
 
@@ -390,11 +393,11 @@ public class PingMonitorViewModel : ViewModelBase
         {
             var bandwidthInfo = new LvlChartsDefaultInfo(currentDateTime.AddSeconds(-i), double.NaN);
 
-            Series[0].Values.Add(bandwidthInfo);
+            ((ObservableCollection<LvlChartsDefaultInfo>)Series[0].Values).Add(bandwidthInfo);
         }
     }
 
-    public async Task Export()
+    public async Task ExportAsync(CancellationToken cancellationToken)
     {
         var customDialog = new CustomDialog
         {
@@ -475,14 +478,14 @@ public class PingMonitorViewModel : ViewModelBase
 
         PacketLoss = Math.Round((double)Lost / Transmitted * 100, 2);
         TimeMs = e.Args.Time;
-
+        var pingValues = Series[0].Values as ObservableCollection<LvlChartsDefaultInfo>;
         // Null exception may occur when the application is closing        
         Application.Current?.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(delegate
         {
-            Series[0].Values.Add(timeInfo);
+            pingValues.Add(timeInfo);
 
-            if (Series[0].Values.Count > 59)
-                Series[0].Values.RemoveAt(0);
+            if (pingValues.Count > 59)
+                pingValues.RemoveAt(0);
         }));
 
         // Add to history
@@ -492,6 +495,7 @@ public class PingMonitorViewModel : ViewModelBase
     private void Ping_UserHasCanceled(object sender, EventArgs e)
     {
         IsRunning = false;
+        _cancellationTokenSource?.Cancel();
     }
 
     private void Ping_HostnameResolved(object sender, HostnameArgs e)
@@ -506,7 +510,7 @@ public class PingMonitorViewModel : ViewModelBase
     private void Ping_PingException(object sender, PingExceptionArgs e)
     {
         IsRunning = false;
-
+        _cancellationTokenSource?.Cancel();
         ErrorMessage = e.Message;
         IsErrorMessageDisplayed = true;
     }

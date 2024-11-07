@@ -4087,9 +4087,9 @@ public class SettingsInfo : INotifyPropertyChanged
         }
     }
 
-    private BitCaluclatorUnit _bitCalculator_Unit = GlobalStaticConfiguration.BitCalculator_Unit;
+    private BitCalculatorUnit _bitCalculator_Unit = GlobalStaticConfiguration.BitCalculator_Unit;
 
-    public BitCaluclatorUnit BitCalculator_Unit
+    public BitCalculatorUnit BitCalculator_Unit
     {
         get => _bitCalculator_Unit;
         set
@@ -4103,9 +4103,9 @@ public class SettingsInfo : INotifyPropertyChanged
     }
 
 
-    private BitCaluclatorNotation _bitCalculator_Notation = GlobalStaticConfiguration.BitCalculator_Notation;
+    private BitCalculatorNotation _bitCalculator_Notation = GlobalStaticConfiguration.BitCalculator_Notation;
 
-    public BitCaluclatorNotation BitCalculator_Notation
+    public BitCalculatorNotation BitCalculator_Notation
     {
         get => _bitCalculator_Notation;
         set

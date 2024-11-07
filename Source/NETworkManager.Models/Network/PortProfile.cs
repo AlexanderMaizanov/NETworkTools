@@ -6,8 +6,8 @@ public static class PortProfile
 {
     public static List<PortProfileInfo> GetDefaultList()
     {
-        return new List<PortProfileInfo>
-        {
+        return
+        [
             new("DNS (via TCP)", "53"),
             new("NTP (via TCP)", "123"),
             new("Webserver", "80; 443"),
@@ -19,6 +19,6 @@ public static class PortProfile
             new("SMB", "139; 445"),
             new("LDAP", "389; 636"),
             new("HTTP proxy", "3128")
-        };
+        ];
     }
 }

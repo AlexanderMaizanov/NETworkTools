@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using NETworkManager.Utilities;
 
@@ -93,7 +94,7 @@ public sealed class SNTPLookup
         };
     }
 
-    public void QueryAsync(IEnumerable<ServerConnectionInfo> servers, bool dnsResolveHostnamePreferIPv4)
+    public void QueryAsync(IEnumerable<ServerConnectionInfo> servers, bool dnsResolveHostnamePreferIPv4, CancellationToken cancellationToken)
     {
         Task.Run(() =>
         {
@@ -110,7 +111,7 @@ public sealed class SNTPLookup
                 else
                 {
                     using var dnsResolverTask =
-                        DNSClientHelper.ResolveAorAaaaAsync(server.Server, dnsResolveHostnamePreferIPv4);
+                        DNSClientHelper.ResolveAorAaaaAsync(server.Server, dnsResolveHostnamePreferIPv4, cancellationToken);
 
                     // Wait for task inside a Parallel.Foreach
                     dnsResolverTask.Wait();
@@ -139,7 +140,7 @@ public sealed class SNTPLookup
             });
 
             OnLookupComplete();
-        });
+        }, cancellationToken);
     }
 
     #endregion

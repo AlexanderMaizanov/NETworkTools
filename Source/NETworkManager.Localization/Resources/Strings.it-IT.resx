@@ -59,7 +59,8 @@
               : using a System.ComponentModel.TypeConverter
               : and then encoded with base64 encoding.
       -->
-    <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns="" id="root">
+    <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata"
+                xmlns="" id="root">
         <xsd:import namespace="http://www.w3.org/XML/1998/namespace"/>
         <xsd:element name="root" msdata:IsDataSet="true">
             <xsd:complexType>
@@ -3929,26 +3930,4 @@ Apri le impostazioni di Windows e consenti l'accesso Wi-Fi per questa applicazio
 
 Per usare questa funzionalità riavvia l'applicazione.</value>
   </data>
-    <data name="DragDropApplicationsToReorderRightClickForMoreOptions" xml:space="preserve">
-    <value>Trascina e rilascia le applicazioni per riordinarle.
-Clic con il tasto destro per ulteriori opzioni.</value>
-  </data>
-    <data name="RestoreDefaults" xml:space="preserve">
-    <value>Ripristina predefiniti</value>
-  </data>
-    <data name="Library_GongSolutionsWpfDragDrop_Description" xml:space="preserve">
-    <value>Un framework drag'n'drop facile da usare per WPF.</value>
-  </data>
-    <data name="License_BDS3Clause" xml:space="preserve">
-    <value>BSD-3-Clause</value>
-  </data>
-    <data name="SetDefault" xml:space="preserve">
-    <value>Imposta predefinito</value>
-  </data>
-    <data name="ExampleProfileDescription" xml:space="preserve">
-      <value>Server Ubuntu che esegue Docker con Nextcloud e Traefik...</value>
-    </data>
-    <data name="ExampleGroupDescription" xml:space="preserve">
-      <value>Server Linux in esecuzione in AWS...</value>
-    </data>
 </root>

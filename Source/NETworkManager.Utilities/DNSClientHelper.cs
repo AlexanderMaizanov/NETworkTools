@@ -1,10 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace NETworkManager.Utilities;
 
 public static class DNSClientHelper
 {
-    public static async Task<DNSClientResultIPAddress> ResolveAorAaaaAsync(string query, bool preferIPv4)
+    public static async Task<DNSClientResultIPAddress> ResolveAorAaaaAsync(string query, bool preferIPv4, CancellationToken cancellationToken)
     {
         DNSClientResultIPAddress firstResult = null;
 
@@ -12,7 +13,7 @@ public static class DNSClientHelper
         {
             if (preferIPv4)
             {
-                var resultIPv4 = await DNSClient.GetInstance().ResolveAAsync(query);
+                var resultIPv4 = await DNSClient.GetInstance().ResolveAAsync(query, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.None);
 
                 if (!resultIPv4.HasError)
                     return resultIPv4;
@@ -20,7 +21,7 @@ public static class DNSClientHelper
             }
             else
             {
-                var resultIPv6 = await DNSClient.GetInstance().ResolveAaaaAsync(query);
+                var resultIPv6 = await DNSClient.GetInstance().ResolveAaaaAsync(query, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.None);
 
                 if (!resultIPv6.HasError)
                     return resultIPv6;

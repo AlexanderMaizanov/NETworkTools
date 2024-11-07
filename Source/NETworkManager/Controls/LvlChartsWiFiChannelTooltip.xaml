@@ -4,7 +4,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:localization="clr-namespace:NETworkManager.Localization.Resources;assembly=NETworkManager.Localization"
-             xmlns:wpf="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
              xmlns:converters="clr-namespace:NETworkManager.Converters;assembly=NETworkManager.Converters"
              mc:Ignorable="d">
     <UserControl.Resources>
@@ -21,7 +20,7 @@
                     </MultiBinding>
                 </TextBlock.Text>
             </TextBlock>
-            <ItemsControl ItemsSource="{Binding Data.Points}">
+            <!--<ItemsControl ItemsSource="{Binding Data.Points}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type wpf:DataPointViewModel}">
                         <Grid>
@@ -51,7 +50,7 @@
                         </Grid>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            </ItemsControl>-->
         </StackPanel>
     </Grid>
 </UserControl>

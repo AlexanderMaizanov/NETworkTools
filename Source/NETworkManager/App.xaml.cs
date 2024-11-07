@@ -52,8 +52,8 @@ public partial class App
  |_| \_|_____| |_|   \_/\_/ \___/|_|  |_|\_\_|  |_|\__,_|_| |_|\__,_|\__, |\___|_|   
                                                                      |___/        
             
-                                               by BornToBeRoot
-                                               GitHub.com/BornToBeRoot/NETworkManager
+                                               by Fader
+                                               GitHub.com/AlexanderMaizanov/NETworkManager
 
                                                Version: {AssemblyManager.Current.Version}
 ";

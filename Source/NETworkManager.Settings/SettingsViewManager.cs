@@ -7,8 +7,8 @@ namespace NETworkManager.Settings;
 public static class SettingsViewManager
 {
     // List of all applications
-    public static List<SettingsViewInfo> List => new()
-    {
+    public static List<SettingsViewInfo> List =>
+    [
         // General
         new SettingsViewInfo(SettingsName.General, new PackIconModern { Kind = PackIconModernKind.Layer },
             SettingsGroup.General),
@@ -67,5 +67,5 @@ public static class SettingsViewManager
             SettingsGroup.Application),
         new SettingsViewInfo(SettingsName.BitCalculator, ApplicationManager.GetIcon(ApplicationName.BitCalculator),
             SettingsGroup.Application)
-    };
+    ];
 }

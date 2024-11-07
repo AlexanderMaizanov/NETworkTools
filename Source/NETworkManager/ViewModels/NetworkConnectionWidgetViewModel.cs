@@ -499,49 +499,36 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
         CheckConnectionAsync().ConfigureAwait(false);
     }
 
-    private CancellationTokenSource _tokenSource;
-    private CancellationToken _ct;
-
     private async Task CheckConnectionAsync()
     {
-        // Already in queue
-        if (_tokenSource is { IsCancellationRequested: true })
-            return;
-
         // Cancel if running
         if (_isChecking)
         {
-            _tokenSource.Cancel();
+            CancellationTokenSource.Cancel();
 
-            while (_isChecking) await Task.Delay(250, _ct);
+            while (_isChecking) await Task.Delay(250, CancellationTokenSource.Token);
         }
 
         // Start check
         _isChecking = true;
 
-        _tokenSource = new CancellationTokenSource();
-        _ct = _tokenSource.Token;
-
         try
         {
-            await Task.Run(async () =>
-            {
-                List<Task> tasks = new()
-                {
-                    CheckConnectionComputerAsync(_ct),
-                    CheckConnectionRouterAsync(_ct),
-                    CheckConnectionInternetAsync(_ct)
-                };
+            List<Task> tasks =
+            [
+                CheckConnectionComputerAsync(CancellationTokenSource.Token),
+                CheckConnectionRouterAsync(CancellationTokenSource.Token),
+                CheckConnectionInternetAsync(CancellationTokenSource.Token)
+            ];
 
-                await Task.WhenAll(tasks);
-            }, _tokenSource.Token);
+            await Task.WhenAll(tasks);
+
         }
         catch (OperationCanceledException)
         {
         }
         finally
         {
-            _tokenSource.Dispose();
             _isChecking = false;
         }
     }
@@ -606,7 +593,7 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
             // Try to resolve local DNS based on IPv4
             if (ComputerIPv4State == ConnectionState.OK)
             {
-                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(ComputerIPv4));
+                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(ComputerIPv4), ct);
 
                 if (!dnsResult.HasError)
                 {
@@ -618,7 +605,7 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
             // Try to resolve local DNS based on IPv6 if IPv4 failed
             if (string.IsNullOrEmpty(ComputerDNS) && ComputerIPv6State == ConnectionState.OK)
             {
-                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(ComputerIPv6));
+                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(ComputerIPv6), ct);
 
                 if (!dnsResult.HasError)
                 {
@@ -720,7 +707,7 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
             // Try to resolve router DNS based on IPv4
             if (RouterIPv4State == ConnectionState.OK)
             {
-                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(RouterIPv4));
+                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(RouterIPv4), ct);
 
                 if (!dnsResult.HasError)
                 {
@@ -732,7 +719,7 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
             // Try to resolve router DNS based on IPv6 if IPv4 failed
             if (string.IsNullOrEmpty(RouterDNS) && RouterIPv6State == ConnectionState.OK)
             {
-                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(RouterIPv6));
+                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(RouterIPv6), ct);
 
                 if (!dnsResult.HasError)
                 {
@@ -845,7 +832,7 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
             // Try to resolve public DNS based on IPv4
             if (InternetIPv4State == ConnectionState.OK)
             {
-                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(InternetIPv4));
+                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(InternetIPv4), ct);
 
                 if (!dnsResult.HasError)
                 {
@@ -857,7 +844,7 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
             // Try to resolve public DNS based on IPv6 if IPv4 failed
             if (string.IsNullOrEmpty(InternetDNS) && InternetIPv6State == ConnectionState.OK)
             {
-                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(InternetIPv6));
+                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(IPAddress.Parse(InternetIPv6), ct);
 
                 if (!dnsResult.HasError)
                 {

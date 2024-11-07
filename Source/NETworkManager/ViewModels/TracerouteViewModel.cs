@@ -170,6 +170,7 @@ public class TracerouteViewModel : ViewModelBase
     public TracerouteViewModel(IDialogCoordinator instance, Guid tabId, string host)
     {
         _dialogCoordinator = instance;
+        _cancellationTokenSource = new CancellationTokenSource();
 
         ConfigurationManager.Current.TracerouteTabCount++;
 
@@ -286,14 +287,13 @@ public class TracerouteViewModel : ViewModelBase
 
         DragablzTabItem.SetTabHeader(_tabId, Host);
 
-        _cancellationTokenSource = new CancellationTokenSource();
-
+        
         // Try to parse the string into an IP-Address
         if (!IPAddress.TryParse(Host, out var ipAddress))
         {
             var dnsResult =
                 await DNSClientHelper.ResolveAorAaaaAsync(Host,
-                    SettingsManager.Current.Network_ResolveHostnamePreferIPv4);
+                    SettingsManager.Current.Network_ResolveHostnamePreferIPv4, _cancellationTokenSource.Token);
 
             if (dnsResult.HasError)
             {

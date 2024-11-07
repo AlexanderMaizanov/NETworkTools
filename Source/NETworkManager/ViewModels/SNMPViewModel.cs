@@ -32,7 +32,7 @@ public class SNMPViewModel : ViewModelBase
     public SNMPViewModel(IDialogCoordinator instance, Guid tabId, SNMPSessionInfo sessionInfo)
     {
         _isLoading = true;
-
+        _cancellationTokenSource = new CancellationTokenSource();
         _dialogCoordinator = instance;
 
         ConfigurationManager.Current.SNMPTabCount++;
@@ -526,6 +526,10 @@ public class SNMPViewModel : ViewModelBase
     {
         IsStatusMessageDisplayed = false;
         IsRunning = true;
+        
+        // Set timeout
+        _cancellationTokenSource.CancelAfter(SettingsManager.Current.SNMP_Timeout);
+
 
         QueryResults.Clear();
 
@@ -536,7 +540,7 @@ public class SNMPViewModel : ViewModelBase
         {
             var dnsResult =
                 await DNSClientHelper.ResolveAorAaaaAsync(Host,
-                    SettingsManager.Current.Network_ResolveHostnamePreferIPv4);
+                    SettingsManager.Current.Network_ResolveHostnamePreferIPv4, _cancellationTokenSource.Token);
 
             if (dnsResult.HasError)
             {
@@ -549,11 +553,9 @@ public class SNMPViewModel : ViewModelBase
             ipAddress = dnsResult.Value;
         }
 
-        _cancellationTokenSource = new CancellationTokenSource();
-
+        
         // SNMP...
         SNMPClient snmpClient = new();
-
         snmpClient.Received += SNMPClient_Received;
         snmpClient.DataUpdated += SNMPClient_DataUpdated;
         snmpClient.Error += SNMPClient_Error;
@@ -563,7 +565,7 @@ public class SNMPViewModel : ViewModelBase
         var oidValue = Oid.Replace(" ", "");
 
         // Check if we have multiple OIDs for a Get request
-        List<string> oids = new();
+        List<string> oids = [];
 
         if (Mode == SNMPMode.Get && oidValue.Contains(';'))
             oids.AddRange(oidValue.Split(';'));
@@ -584,10 +586,10 @@ public class SNMPViewModel : ViewModelBase
             switch (Mode)
             {
                 case SNMPMode.Get:
-                    snmpClient.GetAsync(ipAddress, oids, snmpOptions);
+                    await snmpClient.GetAsync(ipAddress, oids, snmpOptions, snmpOptions.CancellationToken);
                     break;
                 case SNMPMode.Walk:
-                    snmpClient.WalkAsync(ipAddress, oids[0], snmpOptions);
+                    await snmpClient.WalkAsync(ipAddress, oids[0], snmpOptions, snmpOptions.CancellationToken);
                     break;
                 case SNMPMode.Set:
                     snmpClient.SetAsync(ipAddress, oids[0], Data, snmpOptions);
@@ -622,9 +624,6 @@ public class SNMPViewModel : ViewModelBase
                     break;
             }
         }
-
-        // Set timeout
-        _cancellationTokenSource.CancelAfter(SettingsManager.Current.SNMP_Timeout);
 
         // Add to history...
         AddHostToHistory(Host);

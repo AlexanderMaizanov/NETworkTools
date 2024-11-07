@@ -1,11 +1,14 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+		<!--<WindowsSdkPackageVersion>10.0.22621.42</WindowsSdkPackageVersion>-->
+        <TargetFramework>net8.0-windows10.0.26100.0</TargetFramework>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <PlatformTarget>x64</PlatformTarget>
         <SelfContained>false</SelfContained>
-        <!-- Publish a single file can't be used when accessing assembly file path
+        <!--<TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+		
+		 Publish a single file can't be used when accessing assembly file path
         <PublishSingleFile>true</PublishSingleFile>
         <PublishReadyToRun>true</PublishReadyToRun>
         -->
@@ -13,12 +16,12 @@
         <RootNamespace>NETworkManager</RootNamespace>
         <AssemblyName>NETworkManager</AssemblyName>
         <UseWPF>true</UseWPF>
-        <UseWindowsForms>true</UseWindowsForms>
+        <UseWindowsForms>True</UseWindowsForms>
         <StartupObject>NETworkManager.App</StartupObject>
         <ApplicationIcon>NETworkManager.ico</ApplicationIcon>
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
         <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-        <Authors>BornToBeRoot</Authors>
+        <Authors>Fader</Authors>
         <PackageProjectUrl>https://github.com/BornToBeRoot/NETworkManager</PackageProjectUrl>
         <RepositoryUrl>https://github.com/BornToBeRoot/NETworkManager</RepositoryUrl>
         <PackageLicenseFile>NETworkManager.txt</PackageLicenseFile>
@@ -41,12 +44,13 @@
         <BeautyEnableDebugging>False</BeautyEnableDebugging>
         <BeautyUsePatch>False</BeautyUsePatch>
         <BeautyLogLevel>Info</BeautyLogLevel>
+        <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     </PropertyGroup>
     <ItemGroup>
-        <None Remove="log4net.config"/>
-        <None Remove="NETworkManager.ico"/>
-        <None Remove="SplashScreen.png"/>
-        <None Include="..\.editorconfig" Link=".editorconfig"/>
+        <None Remove="log4net.config" />
+        <None Remove="NETworkManager.ico" />
+        <None Remove="SplashScreen.png" />
+        <None Include="..\.editorconfig" Link=".editorconfig" />
         <None Include="NETworkManager.ico">
             <Pack>True</Pack>
         </None>
@@ -57,53 +61,57 @@
         </Content>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="AirspaceFixer" Version="1.0.6"/>
-        <PackageReference Include="AWSSDK.EC2" Version="3.7.414.2"/>
-        <PackageReference Include="DnsClient" Version="1.8.0"/>
-        <PackageReference Include="gong-wpf-dragdrop" Version="3.2.1"/>
-        <PackageReference Include="IPNetwork2" Version="3.0.667"/>
-        <PackageReference Include="Lextm.SharpSnmpLib" Version="12.5.5"/>
-        <PackageReference Include="LiveCharts.Wpf" Version="0.9.7"/>
-        <PackageReference Include="LoadingIndicators.WPF" Version="0.0.1"/>
-        <PackageReference Include="log4net" Version="3.0.2"/>
-        <PackageReference Include="MahApps.Metro" Version="2.4.10"/>
-        <PackageReference Include="MahApps.Metro.IconPacks.FontAwesome" Version="5.1.0"/>
-        <PackageReference Include="MahApps.Metro.IconPacks.Material" Version="5.1.0"/>
-        <PackageReference Include="MahApps.Metro.IconPacks.MaterialLight" Version="5.1.0"/>
-        <PackageReference Include="MahApps.Metro.IconPacks.Modern" Version="5.1.0"/>
-        <PackageReference Include="MahApps.Metro.IconPacks.Octicons" Version="5.1.0"/>
-        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2849.39"/>
-        <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.1.6"/>
-        <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135"/>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.3"/>
-        <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.4.6"/>
-        <PackageReference Include="nulastudio.NetBeauty" Version="2.1.4.3"/>
+        <PackageReference Include="AirspaceFixer" Version="1.0.6" />
+        <PackageReference Include="AsyncAwaitBestPractices" Version="8.0.0" />
+        <PackageReference Include="AsyncAwaitBestPractices.MVVM" Version="8.0.0" />
+        <PackageReference Include="AWSSDK.EC2" Version="3.7.414.2" />
+        <PackageReference Include="DnsClient" Version="1.8.0" />
+        <PackageReference Include="gong-wpf-dragdrop" Version="3.2.1" />
+        <PackageReference Include="IPNetwork2" Version="3.0.667" />
+        <PackageReference Include="Lextm.SharpSnmpLib" Version="12.5.5" />
+        <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc2" />
+        <PackageReference Include="LoadingIndicators.WPF" Version="0.0.1" />
+        <PackageReference Include="log4net" Version="3.0.2" />
+        <PackageReference Include="MahApps.Metro" Version="2.4.10" />
+        <PackageReference Include="MahApps.Metro.IconPacks.FontAwesome" Version="5.1.0" />
+        <PackageReference Include="MahApps.Metro.IconPacks.Material" Version="5.1.0" />
+        <PackageReference Include="MahApps.Metro.IconPacks.MaterialLight" Version="5.1.0" />
+        <PackageReference Include="MahApps.Metro.IconPacks.Modern" Version="5.1.0" />
+        <PackageReference Include="MahApps.Metro.IconPacks.Octicons" Version="5.1.0" />
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2849.39" />
+        <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.1.6" />
+        <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+        <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.4.6" />
+        <PackageReference Include="nulastudio.NetBeauty" Version="2.1.4.6" />
         <Reference Include="AxMSTSCLib">
             <HintPath>$(TargetDir)\lib\AxMSTSCLib.dll</HintPath>
+        </Reference>
+        <Reference Include="Dragablz">
+          <HintPath>..\3rdparty\bin\Release\net8.0-windows10.0.26100.0\win-x64\Dragablz.dll</HintPath>
         </Reference>
         <Reference Include="MSTSCLib">
             <HintPath>$(TargetDir)\lib\MSTSCLib.dll</HintPath>
         </Reference>
-        <Compile Include="..\GlobalAssemblyInfo.cs" Link="Properties\GlobalAssemblyInfo.cs"/>
+        <Compile Include="..\GlobalAssemblyInfo.cs" Link="Properties\GlobalAssemblyInfo.cs" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\3rdparty\Dragablz\Dragablz\Dragablz.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Controls\NETworkManager.Controls.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Converters\NETworkManager.Converters.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Documentation\NETworkManager.Documentation.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Localization\NETworkManager.Localization.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Models\NETworkManager.Models.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Profiles\NETworkManager.Profiles.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Settings\NETworkManager.Settings.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Update\NETworkManager.Update.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Utilities.WPF\NETworkManager.Utilities.WPF.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Utilities\NETworkManager.Utilities.csproj"/>
-        <ProjectReference Include="..\NETworkManager.Validators\NETworkManager.Validators.csproj"/>
+        <ProjectReference Include="..\NETworkManager.Controls\NETworkManager.Controls.csproj" />
+        <ProjectReference Include="..\NETworkManager.Converters\NETworkManager.Converters.csproj" />
+        <ProjectReference Include="..\NETworkManager.Documentation\NETworkManager.Documentation.csproj" />
+        <ProjectReference Include="..\NETworkManager.Localization\NETworkManager.Localization.csproj" />
+        <ProjectReference Include="..\NETworkManager.Models\NETworkManager.Models.csproj" />
+        <ProjectReference Include="..\NETworkManager.Profiles\NETworkManager.Profiles.csproj" />
+        <ProjectReference Include="..\NETworkManager.Settings\NETworkManager.Settings.csproj" />
+        <ProjectReference Include="..\NETworkManager.Update\NETworkManager.Update.csproj" />
+        <ProjectReference Include="..\NETworkManager.Utilities.WPF\NETworkManager.Utilities.WPF.csproj" />
+        <ProjectReference Include="..\NETworkManager.Utilities\NETworkManager.Utilities.csproj" />
+        <ProjectReference Include="..\NETworkManager.Validators\NETworkManager.Validators.csproj" />
     </ItemGroup>
     <ItemGroup>
-        <Resource Include="NETworkManager.ico"/>
-        <Resource Include="SplashScreen.png"/>
+        <Resource Include="NETworkManager.ico" />
+        <Resource Include="SplashScreen.png" />
     </ItemGroup>
     <ItemGroup>
         <Compile Update="Properties\Resources.Designer.cs">
@@ -136,6 +144,6 @@
         </Page>
     </ItemGroup>
     <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-        <Exec Command="PowerShell.exe -ExecutionPolicy Bypass -NoProfile -File &quot;$(ProjectDir)..\..\Scripts\PreBuildEventCommandLine.ps1&quot; &quot;$(TargetDir)&quot;"/>
+        <Exec Command="PowerShell.exe -ExecutionPolicy Bypass -NoProfile -File &quot;$(ProjectDir)..\..\Scripts\PreBuildEventCommandLine.ps1&quot; &quot;$(TargetDir)&quot;" />
     </Target>
 </Project>

@@ -50,18 +50,22 @@ public static class NetBIOSResolver
         udpClient.Client.ReceiveTimeout = timeout;
 
         var remoteEndPoint = new IPEndPoint(ipAddress, NetBIOSUdpPort);
+        var result = new NetBIOSInfo 
+        {
+            IPAddress = ipAddress
+        };
 
         try
         {
-            await udpClient.SendAsync(RequestData, RequestData.Length, remoteEndPoint);
+            await udpClient.SendAsync(RequestData, RequestData.Length, remoteEndPoint).ConfigureAwait(false);
 
             // ReSharper disable once MethodSupportsCancellation - cancellation is handled below by Task.WhenAny
-            var receiveTask = udpClient.ReceiveAsync();
+            var response = await udpClient.ReceiveAsync(cancellationToken).ConfigureAwait(false);
 
-            if (!receiveTask.Wait(timeout, cancellationToken))
-                return new NetBIOSInfo();
+            //if (!receiveTask.Wait(timeout, cancellationToken))
+            //    return new NetBIOSInfo();
 
-            var response = receiveTask.Result;
+            //var response = receiveTask.Result;
 
             if (response.Buffer.Length < ResponseBaseLen || response.Buffer[ResponseTypePos] != ResponseTypeNbstat)
                 return new NetBIOSInfo(); // response was too short
@@ -71,37 +75,31 @@ public static class NetBIOSResolver
             if (response.Buffer.Length < ResponseBaseLen + ResponseBlockLen * count)
                 return new NetBIOSInfo(); // data was truncated or something is wrong
 
-            var result = ExtractNames(response.Buffer, count);
-
-            var vendor = string.Empty;
+            var tmp = ExtractNames(response.Buffer, count);
+            result.ComputerName = tmp.ComputerName;
+            result.UserName = tmp.UserName;
+            result.GroupName = tmp.GroupName;
+            result.MACAddress = MACAddressHelper.GetDefaultFormat(tmp.MacAddress);
 
             // ReSharper disable once InvertIf - readability
-            if (!string.IsNullOrEmpty(result.MacAddress))
+            if (!string.IsNullOrEmpty(tmp.MacAddress))
             {
                 // ReSharper disable once MethodHasAsyncOverload - Parent method is async
-                var info = OUILookup.LookupByMacAddress(result.MacAddress).FirstOrDefault();
+                var info = OUILookup.LookupByMacAddress(tmp.MacAddress).FirstOrDefault();
 
                 if (info != null)
-                    vendor = info.Vendor;
+                    result.Vendor = info.Vendor;
             }
-
-            return new NetBIOSInfo(
-                ipAddress,
-                result.ComputerName,
-                result.UserName,
-                result.GroupName,
-                MACAddressHelper.GetDefaultFormat(result.MacAddress),
-                vendor
-            );
         }
         catch (Exception)
         {
-            return null;
+            
         }
         finally
         {
             udpClient.Close();
         }
+        return result;
     }
 
     private static (string ComputerName, string UserName, string GroupName, string MacAddress) ExtractNames(

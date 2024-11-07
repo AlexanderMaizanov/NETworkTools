@@ -13,11 +13,11 @@ public class PortLookupInfo
     /// </summary>
     /// <param name="number">Port number.</param>
     /// <param name="protocol">Port protocol.</param>
-    [SuppressMessage("ReSharper", "MemberCanBePrivate.Global")]
     public PortLookupInfo(int number, TransportProtocol protocol)
     {
         Number = number;
         Protocol = protocol;
+        Service = Description = "-/-";
     }
 
     /// <summary>
@@ -27,9 +27,10 @@ public class PortLookupInfo
     /// <param name="protocol">Port protocol.</param>
     /// <param name="service">Service associated with the port number and protocol.</param>
     /// <param name="description">Description of the service associated with the port number and protocol.</param>
-    public PortLookupInfo(int number, TransportProtocol protocol, string service, string description) : this(number,
-        protocol)
+    public PortLookupInfo(int number, TransportProtocol protocol, string service, string description)
     {
+        Number = number;
+        Protocol = protocol;
         Service = service;
         Description = description;
     }

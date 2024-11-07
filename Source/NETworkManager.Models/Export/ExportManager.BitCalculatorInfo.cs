@@ -12,12 +12,12 @@ namespace NETworkManager.Models.Export;
 public static partial class ExportManager
 {
     /// <summary>
-    ///     Method to export objects from type <see cref="BitCaluclatorInfo" /> to a file.
+    ///     Method to export objects from type <see cref="BitCalculatorInfo" /> to a file.
     /// </summary>
     /// <param name="filePath">Path to the export file.</param>
     /// <param name="fileType">Allowed <see cref="ExportFileType" /> are CSV, XML or JSON.</param>
     /// <param name="collection">Objects as <see cref="IReadOnlyList{BitCaluclatorInfo}" /> to export.</param>
-    public static void Export(string filePath, ExportFileType fileType, IReadOnlyList<BitCaluclatorInfo> collection)
+    public static void Export(string filePath, ExportFileType fileType, IReadOnlyList<BitCalculatorInfo> collection)
     {
         switch (fileType)
         {
@@ -37,16 +37,16 @@ public static partial class ExportManager
     }
 
     /// <summary>
-    ///     Creates a CSV file from the given <see cref="BitCaluclatorInfo" /> collection.
+    ///     Creates a CSV file from the given <see cref="BitCalculatorInfo" /> collection.
     /// </summary>
     /// <param name="collection">Objects as <see cref="IReadOnlyList{BitCaluclatorInfo}" /> to export.</param>
     /// <param name="filePath">Path to the export file.</param>
-    private static void CreateCsv(IEnumerable<BitCaluclatorInfo> collection, string filePath)
+    private static void CreateCsv(IEnumerable<BitCalculatorInfo> collection, string filePath)
     {
         var stringBuilder = new StringBuilder();
 
         stringBuilder.AppendLine(
-            $"{nameof(BitCaluclatorInfo.Bits)},{nameof(BitCaluclatorInfo.Bytes)},{nameof(BitCaluclatorInfo.Kilobits)},{nameof(BitCaluclatorInfo.Kilobytes)},{nameof(BitCaluclatorInfo.Megabits)},{nameof(BitCaluclatorInfo.Megabytes)},{nameof(BitCaluclatorInfo.Gigabits)},{nameof(BitCaluclatorInfo.Gigabytes)},{nameof(BitCaluclatorInfo.Terabits)},{nameof(BitCaluclatorInfo.Terabytes)},{nameof(BitCaluclatorInfo.Petabits)},{nameof(BitCaluclatorInfo.Petabytes)}");
+            $"{nameof(BitCalculatorInfo.Bits)},{nameof(BitCalculatorInfo.Bytes)},{nameof(BitCalculatorInfo.Kilobits)},{nameof(BitCalculatorInfo.Kilobytes)},{nameof(BitCalculatorInfo.Megabits)},{nameof(BitCalculatorInfo.Megabytes)},{nameof(BitCalculatorInfo.Gigabits)},{nameof(BitCalculatorInfo.Gigabytes)},{nameof(BitCalculatorInfo.Terabits)},{nameof(BitCalculatorInfo.Terabytes)},{nameof(BitCalculatorInfo.Petabits)},{nameof(BitCalculatorInfo.Petabytes)}");
 
         foreach (var info in collection)
             stringBuilder.AppendLine(
@@ -56,40 +56,40 @@ public static partial class ExportManager
     }
 
     /// <summary>
-    ///     Creates a XML file from the given <see cref="BitCaluclatorInfo" /> collection.
+    ///     Creates a XML file from the given <see cref="BitCalculatorInfo" /> collection.
     /// </summary>
     /// <param name="collection">Objects as <see cref="IReadOnlyList{BitCaluclatorInfo}" /> to export.</param>
     /// <param name="filePath">Path to the export file.</param>
-    private static void CreateXml(IEnumerable<BitCaluclatorInfo> collection, string filePath)
+    private static void CreateXml(IEnumerable<BitCalculatorInfo> collection, string filePath)
     {
         var document = new XDocument(DefaultXDeclaration,
             new XElement(ApplicationName.BitCalculator.ToString(),
-                new XElement(nameof(BitCaluclatorInfo) + "s",
+                new XElement(nameof(BitCalculatorInfo) + "s",
                     from info in collection
                     select
-                        new XElement(nameof(BitCaluclatorInfo),
-                            new XElement(nameof(BitCaluclatorInfo.Bits), info.Bits),
-                            new XElement(nameof(BitCaluclatorInfo.Bytes), info.Bytes),
-                            new XElement(nameof(BitCaluclatorInfo.Kilobits), info.Kilobits),
-                            new XElement(nameof(BitCaluclatorInfo.Kilobytes), info.Kilobytes),
-                            new XElement(nameof(BitCaluclatorInfo.Megabits), info.Megabits),
-                            new XElement(nameof(BitCaluclatorInfo.Megabytes), info.Megabytes),
-                            new XElement(nameof(BitCaluclatorInfo.Gigabits), info.Gigabits),
-                            new XElement(nameof(BitCaluclatorInfo.Gigabytes), info.Gigabytes),
-                            new XElement(nameof(BitCaluclatorInfo.Terabits), info.Terabits),
-                            new XElement(nameof(BitCaluclatorInfo.Terabytes), info.Terabytes),
-                            new XElement(nameof(BitCaluclatorInfo.Petabits), info.Petabits),
-                            new XElement(nameof(BitCaluclatorInfo.Petabytes), info.Petabytes)))));
+                        new XElement(nameof(BitCalculatorInfo),
+                            new XElement(nameof(BitCalculatorInfo.Bits), info.Bits),
+                            new XElement(nameof(BitCalculatorInfo.Bytes), info.Bytes),
+                            new XElement(nameof(BitCalculatorInfo.Kilobits), info.Kilobits),
+                            new XElement(nameof(BitCalculatorInfo.Kilobytes), info.Kilobytes),
+                            new XElement(nameof(BitCalculatorInfo.Megabits), info.Megabits),
+                            new XElement(nameof(BitCalculatorInfo.Megabytes), info.Megabytes),
+                            new XElement(nameof(BitCalculatorInfo.Gigabits), info.Gigabits),
+                            new XElement(nameof(BitCalculatorInfo.Gigabytes), info.Gigabytes),
+                            new XElement(nameof(BitCalculatorInfo.Terabits), info.Terabits),
+                            new XElement(nameof(BitCalculatorInfo.Terabytes), info.Terabytes),
+                            new XElement(nameof(BitCalculatorInfo.Petabits), info.Petabits),
+                            new XElement(nameof(BitCalculatorInfo.Petabytes), info.Petabytes)))));
 
         document.Save(filePath);
     }
 
     /// <summary>
-    ///     Creates a JSON file from the given <see cref="BitCaluclatorInfo" /> collection.
+    ///     Creates a JSON file from the given <see cref="BitCalculatorInfo" /> collection.
     /// </summary>
     /// <param name="collection">Objects as <see cref="IReadOnlyList{BitCaluclatorInfo}" /> to export.</param>
     /// <param name="filePath">Path to the export file.</param>
-    private static void CreateJson(IReadOnlyList<BitCaluclatorInfo> collection, string filePath)
+    private static void CreateJson(IReadOnlyList<BitCalculatorInfo> collection, string filePath)
     {
         var jsonData = new object[collection.Count];
 

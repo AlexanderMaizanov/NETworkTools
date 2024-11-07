@@ -13,8 +13,8 @@ public static class DNSServer
     /// <returns>List of common dns servers.</returns>
     public static List<DNSServerConnectionInfoProfile> GetDefaultList()
     {
-        return new List<DNSServerConnectionInfoProfile>
-        {
+        return
+        [
             new(), // Windows DNS server
             new("Cloudflare", new List<ServerConnectionInfo>
             {
@@ -41,6 +41,6 @@ public static class DNSServer
                 new("64.6.64.6", 53, TransportProtocol.Udp),
                 new("64.6.65.6", 53, TransportProtocol.Udp)
             })
-        };
+        ];
     }
 }

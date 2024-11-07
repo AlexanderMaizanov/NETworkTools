@@ -1,12 +1,12 @@
 ﻿namespace NETworkManager.Models.Network;
 
-public class BitCaluclatorInfo
+public class BitCalculatorInfo
 {
-    public BitCaluclatorInfo()
+    public BitCalculatorInfo()
     {
     }
 
-    public BitCaluclatorInfo(double bits, double bytes, double kilobits, double kilobytes, double megabits,
+    public BitCalculatorInfo(double bits, double bytes, double kilobits, double kilobytes, double megabits,
         double megabytes, double gigabits, double gigabytes, double terabits, double terabytes, double petabits,
         double petabytes)
     {

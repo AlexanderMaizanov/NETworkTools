@@ -6,6 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using NETworkManager.Models.Lookup;
 using NETworkManager.Utilities;
+using System.Collections.Concurrent;
+using System.Linq;
+
 
 namespace NETworkManager.Models.Network;
 
@@ -61,90 +64,104 @@ public sealed class PortScanner
     #endregion
 
     #region Methods
+    public Task<IEnumerable<PortInfo>> ScanPortsAsync((IPAddress ipAddress, string hostname) host, IEnumerable<int> ports, CancellationToken cancellationToken)
+    {
+        var portParallelOptions = new ParallelOptions
+        {
+            CancellationToken = cancellationToken,
+            MaxDegreeOfParallelism = _options.MaxPortThreads
+        };
+        return ScanPortsAsync(host, ports, portParallelOptions);
+    }
+    private async Task<IEnumerable<PortInfo>> ScanPortsAsync((IPAddress ipAddress, string hostname) host, IEnumerable<int> ports, ParallelOptions parallelOptions)
+    {
+        ConcurrentBag<PortInfo> results = [];
+                
+        await Parallel.ForEachAsync(ports, parallelOptions, async (port, _ct) =>
+        {
+            // Test if port is open
+            var random = new Random().Next(100, 500);
+            var tmp = _options.Timeout;
+            _options.Timeout += random;
+            var portResult = await ScanPortAsync(host.ipAddress, port, _ct).ConfigureAwait(false);
+            _options.Timeout = tmp;
+            if (portResult.State == PortState.Open || _options.ShowAllResults)
+            {
+                results.Add(portResult);
+                await Task.Delay(random, _ct); //Random delay for UI smoothness
+                OnPortScanned(new PortScannerPortScannedArgs(new PortScannerPortInfo(host.ipAddress, host.hostname, portResult.Port, portResult.LookupInfo, portResult.State)));
+            }
+            IncreaseProgress();
+        }).ConfigureAwait(false);
+        return results.AsEnumerable();
+    }
 
-    public void ScanAsync(IEnumerable<(IPAddress ipAddress, string hostname)> hosts, IEnumerable<int> ports,
+    private async Task<PortInfo> ScanPortAsync(IPAddress ipAddress, int port, CancellationToken cancellationToken)
+    {
+        var portState = PortState.None;
+        var result = new PortInfo(port, null, portState);
+        using var tcpClient = new TcpClient(ipAddress.AddressFamily);
+        tcpClient.SendTimeout = tcpClient.ReceiveTimeout = _options.Timeout;
+        tcpClient.NoDelay = true;
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await tcpClient.ConnectAsync(ipAddress, port, cancellationToken).ConfigureAwait(false);
+            portState = tcpClient.Connected ? PortState.Open : PortState.Closed;
+            var isSocketReadable = tcpClient.GetStream().CanRead;
+        }
+        catch
+        {
+            portState = PortState.Closed;
+            result.State = portState;
+        }
+        finally
+        {
+            tcpClient.Close();
+            //
+        }        
+        if (portState == PortState.Open)//options.ShowAllResults)
+             result = new(port, PortLookup.LookupByPortAndProtocol(port), portState);
+        return result;
+    }
+
+    public async Task ScanAsync(IEnumerable<(IPAddress ipAddress, string hostname)> hosts, IEnumerable<int> ports,
         CancellationToken cancellationToken)
     {
         _progressValue = 0;
-
-        Task.Run(() =>
+        try
         {
-            try
+            cancellationToken.ThrowIfCancellationRequested();
+            var hostParallelOptions = new ParallelOptions
             {
-                var hostParallelOptions = new ParallelOptions
-                {
-                    CancellationToken = cancellationToken,
-                    MaxDegreeOfParallelism = _options.MaxHostThreads
-                };
+                CancellationToken = cancellationToken,
+                MaxDegreeOfParallelism = _options.MaxHostThreads
+            };
 
-                var portParallelOptions = new ParallelOptions
-                {
-                    CancellationToken = cancellationToken,
-                    MaxDegreeOfParallelism = _options.MaxPortThreads
-                };
-
-                Parallel.ForEach(hosts, hostParallelOptions, host =>
-                {
-                    // Resolve Hostname (PTR)
-                    var hostname = string.Empty;
-
-                    if (_options.ResolveHostname)
-                    {
-                        // Don't use await in Parallel.ForEach, this will break
-                        var dnsResolverTask = DNSClient.GetInstance().ResolvePtrAsync(host.ipAddress);
-
-                        // Wait for task inside a Parallel.Foreach
-                        dnsResolverTask.Wait(cancellationToken);
-
-                        if (!dnsResolverTask.Result.HasError)
-                            hostname = dnsResolverTask.Result.Value;
-                    }
-
-                    // Check each port
-                    Parallel.ForEach(ports, portParallelOptions, port =>
-                    {
-                        // Test if port is open
-                        using (var tcpClient = new TcpClient(host.ipAddress.AddressFamily))
-                        {
-                            var portState = PortState.None;
-
-                            try
-                            {
-                                var task = tcpClient.ConnectAsync(host.ipAddress, port);
-
-                                if (task.Wait(_options.Timeout))
-                                    portState = tcpClient.Connected ? PortState.Open : PortState.Closed;
-                                else
-                                    portState = PortState.TimedOut;
-                            }
-                            catch
-                            {
-                                portState = PortState.Closed;
-                            }
-                            finally
-                            {
-                                tcpClient.Close();
-
-                                if (_options.ShowAllResults || portState == PortState.Open)
-                                    OnPortScanned(new PortScannerPortScannedArgs(
-                                        new PortScannerPortInfo(host.ipAddress, hostname, port,
-                                            PortLookup.LookupByPortAndProtocol(port), portState)));
-                            }
-                        }
-
-                        IncreaseProgress();
-                    });
-                });
-            }
-            catch (OperationCanceledException)
+            await Parallel.ForEachAsync(hosts, hostParallelOptions, async (host, _ct) =>
             {
-                OnUserHasCanceled();
-            }
-            finally
-            {
-                OnScanComplete();
-            }
-        }, cancellationToken);
+                // Resolve Hostname (PTR)
+                if (_options.ResolveHostname)
+                {
+                    var dnsResolverTask = await DNSClient.GetInstance().ResolvePtrAsync(host.ipAddress, _ct).ConfigureAwait(false);
+
+                    if (!dnsResolverTask.HasError)
+                        host.hostname = dnsResolverTask.Value;
+                }
+                // Check each port
+                await ScanPortsAsync(host, ports, _ct).ConfigureAwait(false);
+                IncreaseProgress();
+            }).ConfigureAwait(false);
+        }
+        catch (TaskCanceledException)
+        {
+            OnUserHasCanceled();
+        }
+        finally
+        {
+            OnScanComplete();
+        }
     }
 
     private void IncreaseProgress()

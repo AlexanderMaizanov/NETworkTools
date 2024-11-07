@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using NETworkManager.Utilities;
 
@@ -64,24 +66,21 @@ public static class Connection
 
     #region Methods
 
-    public static Task<List<ConnectionInfo>> GetActiveTcpConnectionsAsync()
-    {
-        return Task.Run(GetActiveTcpConnections);
-    }
-
-    private static List<ConnectionInfo> GetActiveTcpConnections()
+    
+    public static async IAsyncEnumerable<ConnectionInfo> GetActiveTcpConnectionsAsync([EnumeratorCancellation] CancellationToken token)
     {
         var result = new List<ConnectionInfo>();
 
         var size = 0;
         // ReSharper disable once RedundantAssignment - size is get by reference
-        var dwResult = GetExtendedTcpTable(IntPtr.Zero, ref size, false, 2, TcpTableClass.TCP_TABLE_OWNER_PID_ALL, 0);
+        GetExtendedTcpTable(IntPtr.Zero, ref size, false, 2, TcpTableClass.TCP_TABLE_OWNER_PID_ALL, 0);
 
         var tcpTable = Marshal.AllocHGlobal(size);
 
         try
         {
-            dwResult = GetExtendedTcpTable(tcpTable, ref size, false, 2, TcpTableClass.TCP_TABLE_OWNER_PID_ALL, 0);
+            token.ThrowIfCancellationRequested();
+            var dwResult = GetExtendedTcpTable(tcpTable, ref size, false, 2, TcpTableClass.TCP_TABLE_OWNER_PID_ALL, 0);
 
             if (dwResult != 0)
                 throw new Exception("Error while retrieving TCP table");
@@ -91,12 +90,14 @@ public static class Connection
 
             for (var i = 0; i < tableRows; i++)
             {
+                token.ThrowIfCancellationRequested();
+
                 var row = (MibTcpRowOwnerPid)Marshal.PtrToStructure(rowPtr, typeof(MibTcpRowOwnerPid))!;
 
                 var localAddress = new IPAddress(row.localAddr);
-                var localPort = BitConverter.ToUInt16(new[] { row.localPort2, row.localPort1 }, 0);
+                var localPort = BitConverter.ToUInt16([row.localPort2, row.localPort1], 0);
                 var remoteAddress = new IPAddress(row.remoteAddr);
-                var remotePort = BitConverter.ToUInt16(new[] { row.remotePort2, row.remotePort1 }, 0);
+                var remotePort = BitConverter.ToUInt16([row.remotePort2, row.remotePort1], 0);
                 var state = (TcpState)row.state;
 
                 // Get process info by PID
@@ -118,16 +119,14 @@ public static class Connection
                 // Resolve remote host name if not cached
                 if (!_remoteHostNames.ContainsKey(remoteAddress))
                 {
-                    var dnsResolverTask = DNSClient.GetInstance().ResolvePtrAsync(remoteAddress);
-
-                    dnsResolverTask.Wait();
+                    var dnsResolver = await DNSClient.GetInstance().ResolvePtrAsync(remoteAddress, token).ConfigureAwait(ConfigureAwaitOptions.None);
 
                     // Cache the result
                     _remoteHostNames.Add(remoteAddress,
-                        !dnsResolverTask.Result.HasError ? dnsResolverTask.Result.Value : "-/-");
+                        !dnsResolver.HasError ? dnsResolver.Value : "-/-");
                 }
 
-                result.Add(new ConnectionInfo(
+                yield return new ConnectionInfo(
                     TransportProtocol.Tcp,
                     localAddress,
                     localPort,
@@ -137,22 +136,15 @@ public static class Connection
                     state,
                     processId,
                     processName,
-                    processPath)
-                );
+                    processPath);
 
                 rowPtr = (IntPtr)((long)rowPtr + Marshal.SizeOf(typeof(MibTcpRowOwnerPid)));
             }
-        }
-        catch (Exception)
-        {
-            return null;
         }
         finally
         {
             Marshal.FreeHGlobal(tcpTable);
         }
-
-        return result;
     }
 
     #endregion

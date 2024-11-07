@@ -14,8 +14,7 @@
              xmlns:localization="clr-namespace:NETworkManager.Localization.Resources;assembly=NETworkManager.Localization"
              xmlns:settings="clr-namespace:NETworkManager.Settings;assembly=NETworkManager.Settings"
              xmlns:controls="clr-namespace:NETworkManager.Controls"
-             xmlns:liveChart="clr-namespace:LiveCharts.Wpf;assembly=LiveCharts.Wpf"
-             xmlns:profiles="clr-namespace:NETworkManager.Profiles;assembly=NETworkManager.Profiles"
+             xmlns:liveChart="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
              dialog:DialogParticipation.Register="{Binding}"
              mc:Ignorable="d" d:DataContext="{d:DesignInstance viewModels:NetworkInterfaceViewModel}">
     <UserControl.InputBindings>
@@ -615,18 +614,18 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <liveChart:CartesianChart Grid.Row="2" Series="{Binding Series}" LegendLocation="Right"
-                                                  Margin="0,0,0,20" DisableAnimations="True">
-                            <liveChart:CartesianChart.DataTooltip>
+                        <liveChart:CartesianChart Grid.Row="2" Series="{Binding Series}" LegendPosition="Right"
+                                                  Margin="0,0,0,20" >
+                            <!--<liveChart:CartesianChart.DataTooltip>
                                 <controls:LvlChartsBandwidthTooltip Background="Transparent" />
                             </liveChart:CartesianChart.DataTooltip>
-                            <liveChart:CartesianChart.AxisX>
+                            <liveChart:CartesianChart.XAxes>
                                 <liveChart:Axis LabelFormatter="{Binding FormatterDate}">
                                     <liveChart:Axis.Separator>
                                         <liveChart:Separator StrokeThickness="0" />
                                     </liveChart:Axis.Separator>
                                 </liveChart:Axis>
-                            </liveChart:CartesianChart.AxisX>
+                            </liveChart:CartesianChart.XAxes>
                             <liveChart:CartesianChart.AxisY>
                                 <liveChart:Axis MinValue="0" LabelFormatter="{Binding FormatterSpeed}">
                                     <liveChart:Axis.Separator>
@@ -635,7 +634,7 @@
                                                              StrokeDashArray="10" />
                                     </liveChart:Axis.Separator>
                                 </liveChart:Axis>
-                            </liveChart:CartesianChart.AxisY>
+                            </liveChart:CartesianChart.AxisY>-->
                         </liveChart:CartesianChart>
                         <TextBlock Grid.Row="3" Text="{x:Static localization:Strings.NetworkUsage}"
                                    Style="{StaticResource HeaderTextBlock}" />
@@ -1253,7 +1252,7 @@
                         </Grid>
                         <ListBox Grid.Column="0" Grid.Row="2" ItemsSource="{Binding Profiles}"
                                  Visibility="{Binding IsSearching, Converter={StaticResource BooleanReverseToVisibilityCollapsedConverter}}"
-                                 SelectedItem="{Binding SelectedProfile}"
+                                 DisplayMemberPath="Name" SelectedItem="{Binding SelectedProfile}"
                                  Style="{StaticResource ProfileListBox}"
                                  ScrollViewer.CanContentScroll="True"
                                  VirtualizingPanel.IsVirtualizing="True"
@@ -1385,26 +1384,8 @@
                                 <Style TargetType="{x:Type ListBoxItem}"
                                        BasedOn="{StaticResource MahApps.Styles.ListBoxItem}">
                                     <Setter Property="ContextMenu" Value="{StaticResource ListBoxItemContextMenu}" />
-                                    <Setter Property="VerticalContentAlignment" Value="Stretch" />
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                                 </Style>
                             </ListBox.ItemContainerStyle>
-                            <ListBox.ItemTemplate>
-                                <DataTemplate DataType="{x:Type profiles:ProfileInfo}">
-                                    <Grid Background="Transparent">
-                                        <Grid.ToolTip>
-                                            <ToolTip MinWidth="250">
-                                                <StackPanel Margin="10">
-                                                    <TextBlock Text="{Binding Host}" Style="{StaticResource DefaultTextBlock}" />
-                                                    <Separator Background="{DynamicResource MahApps.Brushes.Gray8}" Margin="0,10" />
-                                                    <TextBlock Text="{Binding Description}" Style="{StaticResource InfoTextBlock}" TextWrapping="Wrap" />
-                                                </StackPanel>
-                                            </ToolTip>                                        
-                                        </Grid.ToolTip>
-                                        <TextBlock Text="{Binding Name}" Style="{StaticResource CenterTextBlock}" />
-                                    </Grid>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
                         </ListBox>
                         <mah:ProgressRing Grid.Row="2" Height="50" Width="50" IsActive="{Binding IsSearching}" />
                         <Grid Grid.Row="2" VerticalAlignment="Center">

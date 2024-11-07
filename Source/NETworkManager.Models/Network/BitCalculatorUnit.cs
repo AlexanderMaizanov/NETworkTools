@@ -3,7 +3,7 @@
 /// <summary>
 ///     Represents the notation which is used to calculate.
 /// </summary>
-public enum BitCaluclatorUnit
+public enum BitCalculatorUnit
 {
     /// <summary>
     ///     Unit bits.

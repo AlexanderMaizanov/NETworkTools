@@ -34,9 +34,9 @@ public partial class IPScannerView : IDragablzTabItem
         _viewModel.OnClose();
     }
 
-    private void UserControl_Loaded(object sender, RoutedEventArgs e)
+    private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
-        _viewModel.OnLoaded();
+        await _viewModel.OnLoaded().ConfigureAwait(false);
     }
 
     private void Dispatcher_ShutdownStarted(object sender, EventArgs e)

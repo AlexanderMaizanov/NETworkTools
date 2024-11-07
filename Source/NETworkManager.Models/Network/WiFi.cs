@@ -6,6 +6,7 @@ using Windows.Devices.WiFi;
 using Windows.Networking.Connectivity;
 using Windows.Security.Credentials;
 using log4net;
+using System.Threading;
 
 //https://docs.microsoft.com/en-us/uwp/api/windows.devices.wifi.wifiadapter.requestaccessasync
 //var access = await WiFiAdapter.RequestAccessAsync() == WiFiAccessStatus.Allowed;
@@ -26,7 +27,7 @@ public static class WiFi
     ///     <see cref="WiFiAdapterInfo" /> with <see cref="NetworkInterface" /> and <see cref="WiFiAdapter" /> as
     ///     <see cref="List{T}" />.
     /// </returns>
-    public static async Task<List<WiFiAdapterInfo>> GetAdapterAsync()
+    public static async Task<List<WiFiAdapterInfo>> GetAdapterAsync(CancellationToken cancellationToken)
     {
         List<WiFiAdapterInfo> wifiAdapterInfos = [];
 
@@ -35,7 +36,7 @@ public static class WiFi
         if (wifiAdapters.Count <= 0)
             return wifiAdapterInfos;
 
-        var networkInterfaces = await NetworkInterface.GetNetworkInterfacesAsync();
+        var networkInterfaces = await NetworkInterface.GetNetworkInterfacesAsync(cancellationToken).ConfigureAwait(ConfigureAwaitOptions.None);
 
         foreach (var wiFiAdapter in wifiAdapters)
         {
@@ -62,10 +63,10 @@ public static class WiFi
     /// </summary>
     /// <param name="adapter">WiFi adapter as <see cref="WiFiAdapter" />.</param>
     /// <returns>A report as <see cref="WiFiNetworkScanInfo" /> including a list of <see cref="WiFiNetworkInfo" />.</returns>
-    public static async Task<WiFiNetworkScanInfo> GetNetworksAsync(WiFiAdapter adapter)
+    public static async Task<WiFiNetworkScanInfo> GetNetworksAsync(WiFiAdapter adapter, CancellationToken cancellationToken)
     {
         // Scan network adapter async
-        await adapter.ScanAsync();
+        await adapter.ScanAsync().AsTask(cancellationToken).ConfigureAwait(false);
 
         // Try to get the current connected wifi network of this network adapter
         var (_, bssid) = TryGetConnectedNetworkFromWiFiAdapter(adapter.NetworkAdapter.NetworkAdapterId.ToString());
@@ -160,14 +161,14 @@ public static class WiFi
     /// <param name="ssid">SSID for hidden networks.</param>
     /// <returns></returns>
     public static async Task<WiFiConnectionStatus> ConnectAsync(WiFiAdapter adapter, WiFiAvailableNetwork network,
-        WiFiReconnectionKind reconnectionKind, PasswordCredential credential, string ssid = null)
+        WiFiReconnectionKind reconnectionKind, PasswordCredential credential, CancellationToken cancellationToken, string ssid = null)
     {
         WiFiConnectionResult connectionResult;
 
         if (string.IsNullOrEmpty(ssid))
-            connectionResult = await adapter.ConnectAsync(network, reconnectionKind, credential);
+            connectionResult = await adapter.ConnectAsync(network, reconnectionKind, credential).AsTask(cancellationToken).ConfigureAwait(false);
         else
-            connectionResult = await adapter.ConnectAsync(network, reconnectionKind, credential, ssid);
+            connectionResult = await adapter.ConnectAsync(network, reconnectionKind, credential, ssid).AsTask(cancellationToken).ConfigureAwait(false);
 
         // Wrong password may cause connection to timeout.
         // Disconnect any network from the adapter to return it to a non-busy state.
@@ -185,10 +186,10 @@ public static class WiFi
     /// <param name="reconnectionKind">Reconnection type to automatically or manuel reconnect.</param>
     /// <returns></returns>
     public static async Task<WiFiConnectionStatus> ConnectWpsAsync(WiFiAdapter adapter, WiFiAvailableNetwork network,
-        WiFiReconnectionKind reconnectionKind)
+        WiFiReconnectionKind reconnectionKind, CancellationToken cancellationToken)
     {
         var connectionResult = await adapter.ConnectAsync(network, reconnectionKind, null,
-            string.Empty, WiFiConnectionMethod.WpsPushButton);
+            string.Empty, WiFiConnectionMethod.WpsPushButton).AsTask(cancellationToken).ConfigureAwait(false);
 
         // Wrong password may cause connection to timeout.
         // Disconnect any network from the adapter to return it to a non-busy state.
@@ -235,9 +236,9 @@ public static class WiFi
     /// <param name="adapter">WiFi adapter as <see cref="WiFiAdapter" />.</param>
     /// <param name="network">WiFi network as <see cref="WiFiAvailableNetwork" />.</param>
     /// <returns></returns>
-    public static async Task<bool> IsWpsAvailable(WiFiAdapter adapter, WiFiAvailableNetwork network)
+    public static async Task<bool> IsWpsAvailable(WiFiAdapter adapter, WiFiAvailableNetwork network, CancellationToken cancellationToken)
     {
-        var result = await adapter.GetWpsConfigurationAsync(network);
+        var result = await adapter.GetWpsConfigurationAsync(network).AsTask(cancellationToken).ConfigureAwait(false);
 
         return result.SupportedWpsKinds.Contains(WiFiWpsKind.PushButton);
     }

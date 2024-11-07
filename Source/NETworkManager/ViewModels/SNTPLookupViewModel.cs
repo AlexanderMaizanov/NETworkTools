@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
@@ -24,8 +25,11 @@ public class SNTPLookupViewModel : ViewModelBase
 {
     #region Variables
 
+
     private readonly IDialogCoordinator _dialogCoordinator;
 
+
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly Guid _tabId;
     private readonly bool _isLoading;
     private bool _closed;
@@ -226,7 +230,7 @@ public class SNTPLookupViewModel : ViewModelBase
         lookup.LookupError += Lookup_LookupError;
         lookup.LookupComplete += Lookup_LookupComplete;
 
-        lookup.QueryAsync(SNTPServer.Servers, SettingsManager.Current.Network_ResolveHostnamePreferIPv4);
+        lookup.QueryAsync(SNTPServer.Servers, SettingsManager.Current.Network_ResolveHostnamePreferIPv4, _cancellationTokenSource.Token);
     }
 
     private async Task Export()

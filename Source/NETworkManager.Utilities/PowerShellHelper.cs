@@ -13,6 +13,8 @@ public static class PowerShellHelper
     ///     user.
     /// </param>
     /// <param name="windowStyle">Window style of the PowerShell console (Default: Hidden)</param>
+    /// .
+ ///TODO: Refactor to async/await PowerShell managed code
     public static void ExecuteCommand(string command, bool asAdmin = false,
         ProcessWindowStyle windowStyle = ProcessWindowStyle.Hidden)
     {
