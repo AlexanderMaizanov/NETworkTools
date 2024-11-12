@@ -2861,9 +2861,6 @@ Segnala questo problema su Github.</value>
     <data name="Library_MahAppsMetro_Description" xml:space="preserve">
     <value>Un insieme di strumenti per la creazione di app WPF in stile Metro / Modern UI.</value>
   </data>
-    <data name="Library_NewtonsoftJson_Description" xml:space="preserve">
-    <value>Json.NET è un popolare framework JSON ad alte prestazioni per .NET</value>
-  </data>
     <data name="Library_Octokit_Description" xml:space="preserve">
     <value>Una libreria client API GitHub per .NET</value>
   </data>

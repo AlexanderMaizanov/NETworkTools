@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
 using NETworkManager.Utilities;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -47,14 +47,18 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(SNTPLookupInfo.Server)},{nameof(SNTPLookupInfo.IPEndPoint)},{nameof(SNTPLookupInfo.DateTime.NetworkTime)},{nameof(SNTPLookupInfo.DateTime.LocalStartTime)},{nameof(SNTPLookupInfo.DateTime.LocalEndTime)},{nameof(SNTPLookupInfo.DateTime.Offset)},{nameof(SNTPLookupInfo.DateTime.RoundTripDelay)}");
+        stringBuilder.AppendJoin(",",
+            nameof(SNTPLookupInfo.Server), nameof(SNTPLookupInfo.IPEndPoint), nameof(SNTPLookupInfo.DateTime.NetworkTime), nameof(SNTPLookupInfo.DateTime.LocalStartTime),
+            nameof(SNTPLookupInfo.DateTime.LocalEndTime), nameof(SNTPLookupInfo.DateTime.Offset), nameof(SNTPLookupInfo.DateTime.RoundTripDelay)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.Server},{info.IPEndPoint},{DateTimeHelper.DateTimeToFullDateTimeString(info.DateTime.NetworkTime)},{DateTimeHelper.DateTimeToFullDateTimeString(info.DateTime.LocalStartTime)},{DateTimeHelper.DateTimeToFullDateTimeString(info.DateTime.LocalEndTime)},{info.DateTime.Offset} s,{info.DateTime.RoundTripDelay} ms");
+            stringBuilder.AppendJoin(",",
+                info.Server,info.IPEndPoint,DateTimeHelper.DateTimeToFullDateTimeString(info.DateTime.NetworkTime),DateTimeHelper.DateTimeToFullDateTimeString(info.DateTime.LocalStartTime),
+                DateTimeHelper.DateTimeToFullDateTimeString(info.DateTime.LocalEndTime), $"{info.DateTime.Offset} s", $"{info.DateTime.RoundTripDelay} ms"
+            ).AppendLine();
 
-        File.WriteAllText(filePath, stringBuilder.ToString());
+        File.WriteAllText(filePath, stringBuilder.ToString(), Encoding.UTF8);
     }
 
     /// <summary>
@@ -92,10 +96,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<SNTPLookupInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 collection[i].Server,
                 collection[i].IPEndPoint,
@@ -106,6 +110,6 @@ public static partial class ExportManager
                 RoundTripDelay = $"{collection[i].DateTime.RoundTripDelay} ms"
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]),jsonSerializerOptions), Encoding.UTF8);
     }
 }

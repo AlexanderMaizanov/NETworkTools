@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Lookup;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -47,14 +47,18 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(PortScannerPortInfo.IPAddress)},{nameof(PortScannerPortInfo.Hostname)},{nameof(PortScannerPortInfo.Port)},{nameof(PortLookupInfo.Protocol)},{nameof(PortLookupInfo.Service)},{nameof(PortLookupInfo.Description)},{nameof(PortScannerPortInfo.State)}");
+        stringBuilder.AppendJoin(",",
+            nameof(PortScannerPortInfo.IPAddress),nameof(PortScannerPortInfo.Hostname),nameof(PortScannerPortInfo.Port),nameof(PortLookupInfo.Protocol),
+            nameof(PortLookupInfo.Service),nameof(PortLookupInfo.Description),nameof(PortScannerPortInfo.State)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.IPAddress},{info.Hostname},{info.Port},{info.LookupInfo.Protocol},{info.LookupInfo.Service},\"{info.LookupInfo.Description}\",{info.State}");
+            stringBuilder.AppendJoin(",",
+                info.IPAddress,info.Hostname,info.Port,info.LookupInfo.Protocol,
+                info.LookupInfo.Service,$"\"{info.LookupInfo.Description}\"",info.State
+            ).AppendLine();
 
-        File.WriteAllText(filePath, stringBuilder.ToString());
+        File.WriteAllText(filePath, stringBuilder.ToString(), Encoding.UTF8);
     }
 
     /// <summary>
@@ -88,10 +92,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<PortScannerPortInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 IPAddress = collection[i].IPAddress.ToString(),
                 collection[i].Hostname,
@@ -102,6 +106,6 @@ public static partial class ExportManager
                 Status = collection[i].State.ToString()
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

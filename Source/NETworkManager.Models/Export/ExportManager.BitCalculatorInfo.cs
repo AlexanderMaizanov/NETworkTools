@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -45,12 +45,18 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(BitCalculatorInfo.Bits)},{nameof(BitCalculatorInfo.Bytes)},{nameof(BitCalculatorInfo.Kilobits)},{nameof(BitCalculatorInfo.Kilobytes)},{nameof(BitCalculatorInfo.Megabits)},{nameof(BitCalculatorInfo.Megabytes)},{nameof(BitCalculatorInfo.Gigabits)},{nameof(BitCalculatorInfo.Gigabytes)},{nameof(BitCalculatorInfo.Terabits)},{nameof(BitCalculatorInfo.Terabytes)},{nameof(BitCalculatorInfo.Petabits)},{nameof(BitCalculatorInfo.Petabytes)}");
+        stringBuilder.AppendJoin(",",
+            nameof(BitCalculatorInfo.Bits),nameof(BitCalculatorInfo.Bytes),nameof(BitCalculatorInfo.Kilobits),nameof(BitCalculatorInfo.Kilobytes),
+            nameof(BitCalculatorInfo.Megabits),nameof(BitCalculatorInfo.Megabytes),nameof(BitCalculatorInfo.Gigabits),nameof(BitCalculatorInfo.Gigabytes),
+            nameof(BitCalculatorInfo.Terabits),nameof(BitCalculatorInfo.Terabytes),nameof(BitCalculatorInfo.Petabits),nameof(BitCalculatorInfo.Petabytes)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.Bits},{info.Bytes},{info.Kilobits},{info.Kilobytes},{info.Megabits},{info.Megabytes},{info.Gigabits},{info.Gigabytes},{info.Terabits},{info.Terabytes},{info.Petabits},{info.Petabytes}");
+            stringBuilder.AppendJoin(",",
+                info.Bits,info.Bytes,info.Kilobits,info.Kilobytes,
+                info.Megabits,info.Megabytes,info.Gigabits,info.Gigabytes,
+                info.Terabits,info.Terabytes,info.Petabits,info.Petabytes
+            ).AppendLine();
 
         File.WriteAllText(filePath, stringBuilder.ToString());
     }
@@ -89,12 +95,13 @@ public static partial class ExportManager
     /// </summary>
     /// <param name="collection">Objects as <see cref="IReadOnlyList{BitCaluclatorInfo}" /> to export.</param>
     /// <param name="filePath">Path to the export file.</param>
+    
     private static void CreateJson(IReadOnlyList<BitCalculatorInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 collection[i].Bits,
                 collection[i].Bytes,
@@ -110,6 +117,6 @@ public static partial class ExportManager
                 collection[i].Petabytes
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

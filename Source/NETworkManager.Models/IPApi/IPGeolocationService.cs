@@ -1,10 +1,10 @@
 ﻿using System;
+using System.Text.Json;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using NETworkManager.Utilities;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.IPApi;
 
@@ -76,7 +76,7 @@ public class IPGeolocationService : SingletonBase<IPGeolocationService>
                         -1);
 
                 var json = await response.Content.ReadAsStringAsync();
-                var info = JsonConvert.DeserializeObject<IPGeolocationInfo>(json);
+                var info = JsonSerializer.Deserialize<IPGeolocationInfo>(json);
 
                 return new IPGeolocationResult(info);
             }

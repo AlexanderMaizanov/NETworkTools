@@ -2836,9 +2836,6 @@ Error message:
     <data name="Library_MahAppsMetro_Description" xml:space="preserve">
     <value>Sada nástrojů pro vytváření aplikací WPF ve stylu Metro / Modern UI.</value>
   </data>
-    <data name="Library_NewtonsoftJson_Description" xml:space="preserve">
-    <value>Json.NET je populární vysoce výkonný framewrok JSON pro .NET</value>
-  </data>
     <data name="Library_Octokit_Description" xml:space="preserve">
     <value>Klientská knihovna GitHub API pro .NET</value>
   </data>

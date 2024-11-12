@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -45,11 +45,12 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(ARPInfo.IPAddress)},{nameof(ARPInfo.MACAddress)},{nameof(ARPInfo.IsMulticast)}");
+        stringBuilder.AppendJoin(",",
+            nameof(ARPInfo.IPAddress),nameof(ARPInfo.MACAddress),nameof(ARPInfo.IsMulticast)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine($"{info.IPAddress},{info.MACAddress},{info.IsMulticast}");
+            stringBuilder.AppendJoin(",", info.IPAddress, info.MACAddress, info.IsMulticast).AppendLine();
 
         File.WriteAllText(filePath, stringBuilder.ToString());
     }
@@ -79,18 +80,19 @@ public static partial class ExportManager
     /// </summary>
     /// <param name="collection">Objects as <see cref="IReadOnlyList{ARPInfo}" /> to export.</param>
     /// <param name="filePath">Path to the export file.</param>
+    
     private static void CreateJson(IReadOnlyList<ARPInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 IPAddress = collection[i].IPAddress.ToString(),
                 MACAddress = collection[i].MACAddress.ToString(),
                 collection[i].IsMulticast
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

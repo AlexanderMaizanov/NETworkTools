@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -45,13 +45,18 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(ConnectionInfo.Protocol)},{nameof(ConnectionInfo.LocalIPAddress)},{nameof(ConnectionInfo.LocalPort)},{nameof(ConnectionInfo.RemoteIPAddress)},{nameof(ConnectionInfo.RemotePort)},{nameof(ConnectionInfo.RemoteHostname)},{nameof(ConnectionInfo.TcpState)},{nameof(ConnectionInfo.ProcessId)},{nameof(ConnectionInfo.ProcessName)},{nameof(ConnectionInfo.ProcessPath)}"
-        );
+        stringBuilder.AppendJoin(",",
+               nameof(ConnectionInfo.Protocol), nameof(ConnectionInfo.LocalIPAddress), nameof(ConnectionInfo.LocalPort), nameof(ConnectionInfo.RemoteIPAddress),
+               nameof(ConnectionInfo.RemotePort), nameof(ConnectionInfo.RemoteHostname), nameof(ConnectionInfo.TcpState), nameof(ConnectionInfo.ProcessId), 
+               nameof(ConnectionInfo.ProcessName), nameof(ConnectionInfo.ProcessPath)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.Protocol},{info.LocalIPAddress},{info.LocalPort},{info.RemoteIPAddress},{info.RemotePort},{info.RemoteHostname},{info.TcpState},{info.ProcessId},{info.ProcessName},{info.ProcessPath}");
+            stringBuilder.AppendJoin(",", 
+                info.Protocol, info.LocalIPAddress, info.LocalPort, info.RemoteIPAddress,
+                info.RemotePort,info.RemoteHostname,info.TcpState, info.ProcessId,
+                info.ProcessName, info.ProcessPath
+            ).AppendLine();
 
         File.WriteAllText(filePath, stringBuilder.ToString());
     }
@@ -91,10 +96,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<ConnectionInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 Protocol = collection[i].Protocol.ToString(),
                 LocalIPAddress = collection[i].LocalIPAddress.ToString(),
@@ -108,6 +113,6 @@ public static partial class ExportManager
                 collection[i].ProcessPath
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

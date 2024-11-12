@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -45,12 +45,15 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(IPNetworkInfo.Network)},{nameof(IPNetworkInfo.Broadcast)},{nameof(IPNetworkInfo.Total)},{nameof(IPNetworkInfo.Netmask)},{nameof(IPNetworkInfo.Cidr)},{nameof(IPNetworkInfo.FirstUsable)},{nameof(IPNetworkInfo.LastUsable)},{nameof(IPNetworkInfo.Usable)}");
+        stringBuilder.AppendJoin(",",
+            nameof(IPNetworkInfo.Network),nameof(IPNetworkInfo.Broadcast),nameof(IPNetworkInfo.Total),nameof(IPNetworkInfo.Netmask),
+            nameof(IPNetworkInfo.Cidr),nameof(IPNetworkInfo.FirstUsable),nameof(IPNetworkInfo.LastUsable),nameof(IPNetworkInfo.Usable)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.Network},{info.Broadcast},{info.Total},{info.Netmask},{info.Cidr},{info.FirstUsable},{info.LastUsable},{info.Usable}");
+            stringBuilder.AppendJoin(",",
+                info.Network,info.Broadcast,info.Total,info.Netmask,info.Cidr,info.FirstUsable,info.LastUsable,info.Usable
+            ).AppendLine();
 
         File.WriteAllText(filePath, stringBuilder.ToString());
     }
@@ -87,10 +90,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<IPNetworkInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 Network = collection[i].Network.ToString(),
                 Broadcast = collection[i].Broadcast.ToString(),
@@ -102,6 +105,6 @@ public static partial class ExportManager
                 collection[i].Usable
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

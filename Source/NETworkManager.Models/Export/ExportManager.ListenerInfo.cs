@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -45,13 +45,14 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(ListenerInfo.Protocol)},{nameof(ListenerInfo.IPAddress)},{nameof(ListenerInfo.Port)}");
+        stringBuilder.AppendJoin(",",
+            nameof(ListenerInfo.Protocol),nameof(ListenerInfo.IPAddress),nameof(ListenerInfo.Port)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine($"{info.Protocol},{info.IPAddress},{info.Port}");
+            stringBuilder.AppendJoin(",", info.Protocol,info.IPAddress,info.Port).AppendLine();
 
-        File.WriteAllText(filePath, stringBuilder.ToString());
+        File.WriteAllText(filePath, stringBuilder.ToString(), Encoding.UTF8);
     }
 
     /// <summary>
@@ -81,16 +82,16 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<ListenerInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 Protocol = collection[i].Protocol.ToString(),
                 IPAddress = collection[i].IPAddress.ToString(),
                 collection[i].Port
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]),jsonSerializerOptions), Encoding.UTF8);
     }
 }

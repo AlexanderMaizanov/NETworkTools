@@ -5,10 +5,12 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using AsyncAwaitBestPractices;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using NETworkManager.Localization.Resources;
@@ -40,7 +42,7 @@ public class LookupPortLookupViewModel : ViewModelBase
     private void AddSearchToHistory(string portOrService)
     {
         // Create the new list
-        var list = ListHelper.Modify(SettingsManager.Current.Lookup_Port_SearchHistory.ToList(), portOrService,
+        var list = ListHelper.Modify([.. SettingsManager.Current.Lookup_Port_SearchHistory], portOrService,
             SettingsManager.Current.General_HistoryListEntries);
 
         // Clear the old items
@@ -56,6 +58,7 @@ public class LookupPortLookupViewModel : ViewModelBase
     #region Variables
 
     private readonly IDialogCoordinator _dialogCoordinator;
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     private string _search;
 
@@ -171,7 +174,7 @@ public class LookupPortLookupViewModel : ViewModelBase
     #region ICommands & Actions
 
     public ICommand PortLookupCommand =>
-        new RelayCommand(_ => PortLookupAction().ConfigureAwait(false), PortLookup_CanExecute);
+        new RelayCommand(_ => PortLookupActionAsync(_cancellationTokenSource.Token).ConfigureAwait(ConfigureAwaitOptions.None), PortLookup_CanExecute);
 
     private bool PortLookup_CanExecute(object parameter)
     {
@@ -180,7 +183,7 @@ public class LookupPortLookupViewModel : ViewModelBase
                    .IsAnyDialogOpen && !HasError;
     }
 
-    private async Task PortLookupAction()
+    private async Task PortLookupActionAsync(CancellationToken cancellationToken)
     {
         IsRunning = true;
 
@@ -258,7 +261,7 @@ public class LookupPortLookupViewModel : ViewModelBase
         // Get Port information's by port number
         // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator (Doesn't work with async/await)
         foreach (var port in ports)
-        foreach (var info in await PortLookup.LookupByPortAsync(port))
+        foreach (var info in await PortLookup.LookupByPortAsync(port, cancellationToken))
             results.Add(info);
 
         // Get Port information's by port number and protocol
@@ -266,14 +269,14 @@ public class LookupPortLookupViewModel : ViewModelBase
         foreach (var portAndProtocol in portsAndProtocols)
             results.Add(
                 await PortLookup.LookupByPortAndProtocolAsync(
-                    portAndProtocol.Item1,
+                    portAndProtocol.Item1, cancellationToken,
                     (TransportProtocol)Enum.Parse(typeof(TransportProtocol), portAndProtocol.Item2, true))
             );
 
         // Get Port information's by service
         // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator (Doesn't work with async/await)
         foreach (var service in services)
-        foreach (var info in await PortLookup.SearchByServiceAsync(service))
+        foreach (var info in await PortLookup.SearchByServiceAsync(service, cancellationToken))
             results.Add(info);
 
         // Add the results to the collection
@@ -289,10 +292,12 @@ public class LookupPortLookupViewModel : ViewModelBase
         IsRunning = false;
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction().ConfigureAwait(false));
+    public ICommand ExportCommand => new RelayCommand(_ => ExportAction(_cancellationTokenSource.Token).SafeFireAndForget(ConfigureAwaitOptions.None));
 
-    private async Task ExportAction()
+    private async Task ExportAction(CancellationToken cancellationToken)
     {
+        if(cancellationToken.IsCancellationRequested)
+            { return; }
         var customDialog = new CustomDialog
         {
             Title = Strings.Export
@@ -300,6 +305,8 @@ public class LookupPortLookupViewModel : ViewModelBase
 
         var exportViewModel = new ExportViewModel(async instance =>
             {
+                if (cancellationToken.IsCancellationRequested)
+                    { return; }
                 await _dialogCoordinator.HideMetroDialogAsync(this, customDialog);
 
                 try

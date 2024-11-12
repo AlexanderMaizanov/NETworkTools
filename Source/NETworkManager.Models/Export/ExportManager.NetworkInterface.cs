@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -45,14 +45,26 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(NetworkInterfaceInfo.Id)},{nameof(NetworkInterfaceInfo.Name)},{nameof(NetworkInterfaceInfo.Description)},{nameof(NetworkInterfaceInfo.Type)},{nameof(NetworkInterfaceInfo.PhysicalAddress)},{nameof(NetworkInterfaceInfo.Status)},{nameof(NetworkInterfaceInfo.IsOperational)},{nameof(NetworkInterfaceInfo.Speed)},{nameof(NetworkInterfaceInfo.IPv4ProtocolAvailable)},{nameof(NetworkInterfaceInfo.IPv4Address)},{nameof(NetworkInterfaceInfo.IPv4Gateway)},{nameof(NetworkInterfaceInfo.DhcpEnabled)},{nameof(NetworkInterfaceInfo.DhcpServer)},{nameof(NetworkInterfaceInfo.DhcpLeaseObtained)},{nameof(NetworkInterfaceInfo.DhcpLeaseExpires)},{nameof(NetworkInterfaceInfo.IPv6ProtocolAvailable)},{nameof(NetworkInterfaceInfo.IPv6Address)},{nameof(NetworkInterfaceInfo.IPv6AddressLinkLocal)},{nameof(NetworkInterfaceInfo.IPv6Gateway)},{nameof(NetworkInterfaceInfo.DNSAutoconfigurationEnabled)},{nameof(NetworkInterfaceInfo.DNSSuffix)},{nameof(NetworkInterfaceInfo.DNSServer)}");
+        stringBuilder.AppendJoin(",",
+            nameof(NetworkInterfaceInfo.Id),nameof(NetworkInterfaceInfo.Name),nameof(NetworkInterfaceInfo.Description),nameof(NetworkInterfaceInfo.Type),
+            nameof(NetworkInterfaceInfo.PhysicalAddress),nameof(NetworkInterfaceInfo.Status),nameof(NetworkInterfaceInfo.IsOperational),nameof(NetworkInterfaceInfo.Speed),
+            nameof(NetworkInterfaceInfo.IPv4ProtocolAvailable),nameof(NetworkInterfaceInfo.IPv4Address),nameof(NetworkInterfaceInfo.IPv4Gateway),nameof(NetworkInterfaceInfo.DhcpEnabled),
+            nameof(NetworkInterfaceInfo.DhcpServer),nameof(NetworkInterfaceInfo.DhcpLeaseObtained),nameof(NetworkInterfaceInfo.DhcpLeaseExpires),nameof(NetworkInterfaceInfo.IPv6ProtocolAvailable),
+            nameof(NetworkInterfaceInfo.IPv6Address),nameof(NetworkInterfaceInfo.IPv6AddressLinkLocal),nameof(NetworkInterfaceInfo.IPv6Gateway),nameof(NetworkInterfaceInfo.DNSAutoconfigurationEnabled),
+            nameof(NetworkInterfaceInfo.DNSSuffix),nameof(NetworkInterfaceInfo.DNSServer)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.Id},{info.Name},{info.Description},{info.Type},{info.PhysicalAddress},{info.Status},{info.IsOperational},{info.Speed},{info.IPv4ProtocolAvailable},{IPv4Address.ConvertIPAddressWithSubnetmaskListToString(info.IPv4Address, ";")},{IPv4Address.ConvertIPAddressListToString(info.IPv4Gateway, ";")},{info.DhcpEnabled},{IPv4Address.ConvertIPAddressListToString(info.DhcpServer, ";")},{info.DhcpLeaseObtained},{info.DhcpLeaseExpires},{info.IPv6ProtocolAvailable},{IPv4Address.ConvertIPAddressListToString(info.IPv6Address, ";")},{IPv4Address.ConvertIPAddressListToString(info.IPv6AddressLinkLocal, ";")},{IPv4Address.ConvertIPAddressListToString(info.IPv6Gateway, ";")},{info.DNSAutoconfigurationEnabled},{info.DNSSuffix},{IPv4Address.ConvertIPAddressListToString(info.DNSServer, ";")}");
+            stringBuilder.AppendJoin(",",
+                info.Id,info.Name,info.Description,info.Type,
+                info.PhysicalAddress,info.Status,info.IsOperational,info.Speed,
+                info.IPv4ProtocolAvailable,IPv4Address.ConvertIPAddressWithSubnetmaskListToString(info.IPv4Address, ";"),IPv4Address.ConvertIPAddressListToString(info.IPv4Gateway, ";"),info.DhcpEnabled,
+                IPv4Address.ConvertIPAddressListToString(info.DhcpServer, ";"),info.DhcpLeaseObtained,info.DhcpLeaseExpires,info.IPv6ProtocolAvailable,
+                IPv4Address.ConvertIPAddressListToString(info.IPv6Address, ";"), IPv4Address.ConvertIPAddressListToString(info.IPv6AddressLinkLocal, ";"),IPv4Address.ConvertIPAddressListToString(info.IPv6Gateway, ";"),info.DNSAutoconfigurationEnabled,
+                info.DNSSuffix,IPv4Address.ConvertIPAddressListToString(info.DNSServer, ";")
+            ).AppendLine();
 
-        File.WriteAllText(filePath, stringBuilder.ToString());
+        File.WriteAllText(filePath, stringBuilder.ToString(), Encoding.UTF8);
     }
 
     /// <summary>
@@ -111,10 +123,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<NetworkInterfaceInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 collection[i].Id,
                 collection[i].Name,
@@ -141,6 +153,6 @@ public static partial class ExportManager
                 DNSServer = IPv4Address.ConvertIPAddressListToString(collection[i].DNSServer, ";")
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

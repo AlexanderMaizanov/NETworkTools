@@ -1,4 +1,5 @@
 ﻿using System.IO;
+using System.Text.Json;
 using System.Xml.Linq;
 
 namespace NETworkManager.Models.Export;
@@ -12,6 +13,14 @@ public static partial class ExportManager
     ///     Default declaration for XML documents.
     /// </summary>
     private static readonly XDeclaration DefaultXDeclaration = new("1.0", "utf-8", "yes");
+
+    /// <summary>
+    ///     Json serializer options.
+    /// </summary>
+    private static readonly JsonSerializerOptions jsonSerializerOptions = new()
+    {
+        WriteIndented = true,
+    };
 
     /// <summary>
     ///     Method to export text to a file.

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.IPApi;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -45,12 +45,24 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(IPGeolocationInfo.Status)},{nameof(IPGeolocationInfo.Continent)},{nameof(IPGeolocationInfo.ContinentCode)},{nameof(IPGeolocationInfo.Country)},{nameof(IPGeolocationInfo.CountryCode)},{nameof(IPGeolocationInfo.Region)},{nameof(IPGeolocationInfo.RegionName)},{nameof(IPGeolocationInfo.City)},{nameof(IPGeolocationInfo.District)},{nameof(IPGeolocationInfo.Zip)},{nameof(IPGeolocationInfo.Lat)},{nameof(IPGeolocationInfo.Lon)},{nameof(IPGeolocationInfo.Timezone)},{nameof(IPGeolocationInfo.Offset)},{nameof(IPGeolocationInfo.Currency)},{nameof(IPGeolocationInfo.Isp)},{nameof(IPGeolocationInfo.Org)},{nameof(IPGeolocationInfo.As)},{nameof(IPGeolocationInfo.Asname)},{nameof(IPGeolocationInfo.Reverse)},{nameof(IPGeolocationInfo.Mobile)},{nameof(IPGeolocationInfo.Proxy)},{nameof(IPGeolocationInfo.Hosting)},{nameof(IPGeolocationInfo.Query)}");
+        stringBuilder.AppendJoin(",",
+            nameof(IPGeolocationInfo.Status),nameof(IPGeolocationInfo.Continent),nameof(IPGeolocationInfo.ContinentCode),nameof(IPGeolocationInfo.Country),
+            nameof(IPGeolocationInfo.CountryCode),nameof(IPGeolocationInfo.Region),nameof(IPGeolocationInfo.RegionName),nameof(IPGeolocationInfo.City),
+            nameof(IPGeolocationInfo.District),nameof(IPGeolocationInfo.Zip),nameof(IPGeolocationInfo.Lat),nameof(IPGeolocationInfo.Lon),
+            nameof(IPGeolocationInfo.Timezone),nameof(IPGeolocationInfo.Offset),nameof(IPGeolocationInfo.Currency),nameof(IPGeolocationInfo.Isp),
+            nameof(IPGeolocationInfo.Org),nameof(IPGeolocationInfo.As),nameof(IPGeolocationInfo.Asname),nameof(IPGeolocationInfo.Reverse),
+            nameof(IPGeolocationInfo.Mobile),nameof(IPGeolocationInfo.Proxy),nameof(IPGeolocationInfo.Hosting),nameof(IPGeolocationInfo.Query)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.Status},{info.Continent},{info.ContinentCode},{info.Country},{info.CountryCode},{info.Region},{info.RegionName},{info.City},{info.District},{info.Zip},{info.Lat},{info.Lon},{info.Timezone},{info.Offset},{info.Currency},{info.Isp},{info.Org},{info.As},{info.Asname},{info.Reverse},{info.Mobile},{info.Proxy},{info.Hosting},{info.Query}");
+            stringBuilder.AppendJoin(",",
+                info.Status,info.Continent,info.ContinentCode,info.Country,
+                info.CountryCode,info.Region,info.RegionName,info.City,
+                info.District,info.Zip,info.Lat,info.Lon,
+                info.Timezone,info.Offset,info.Currency,info.Isp,
+                info.Org,info.As,info.Asname,info.Reverse,
+                info.Mobile,info.Proxy,info.Hosting,info.Query
+            ).AppendLine();
 
         File.WriteAllText(filePath, stringBuilder.ToString());
     }
@@ -103,10 +115,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<IPGeolocationInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 collection[i].Status,
                 collection[i].Continent,
@@ -134,6 +146,6 @@ public static partial class ExportManager
                 collection[i].Query
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

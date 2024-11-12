@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -47,12 +47,16 @@ public static partial class ExportManager
         var stringBuilder = new StringBuilder();
 
 
-        stringBuilder.AppendLine(
-            $"{nameof(DiscoveryProtocolPackageInfo.Device)},{nameof(DiscoveryProtocolPackageInfo.DeviceDescription)},{nameof(DiscoveryProtocolPackageInfo.Port)},{nameof(DiscoveryProtocolPackageInfo.PortDescription)},{nameof(DiscoveryProtocolPackageInfo.Model)},{nameof(DiscoveryProtocolPackageInfo.VLAN)},{nameof(DiscoveryProtocolPackageInfo.IPAddress)},{nameof(DiscoveryProtocolPackageInfo.Protocol)},{nameof(DiscoveryProtocolPackageInfo.TimeToLive)}");
+        stringBuilder.AppendJoin(",",
+            nameof(DiscoveryProtocolPackageInfo.Device),nameof(DiscoveryProtocolPackageInfo.DeviceDescription),nameof(DiscoveryProtocolPackageInfo.Port),
+            nameof(DiscoveryProtocolPackageInfo.PortDescription),nameof(DiscoveryProtocolPackageInfo.Model),nameof(DiscoveryProtocolPackageInfo.VLAN),
+            nameof(DiscoveryProtocolPackageInfo.IPAddress),nameof(DiscoveryProtocolPackageInfo.Protocol),nameof(DiscoveryProtocolPackageInfo.TimeToLive)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.Device},{info.DeviceDescription},{info.Port},{info.PortDescription},{info.Model},{info.VLAN},{info.IPAddress},{info.Protocol},{info.TimeToLive}");
+            stringBuilder.AppendJoin(",",
+                info.Device,info.DeviceDescription,info.Port,info.PortDescription,info.Model,info.VLAN,info.IPAddress,info.Protocol,info.TimeToLive
+            ).AppendLine();
 
         File.WriteAllText(filePath, stringBuilder.ToString());
     }
@@ -91,10 +95,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<DiscoveryProtocolPackageInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 collection[i].Device,
                 collection[i].DeviceDescription,
@@ -107,6 +111,6 @@ public static partial class ExportManager
                 collection[i].TimeToLive
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]),jsonSerializerOptions), Encoding.UTF8);
     }
 }

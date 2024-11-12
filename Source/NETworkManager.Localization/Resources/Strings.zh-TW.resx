@@ -2837,9 +2837,6 @@ Error message:
     <data name="Library_MahAppsMetro_Description" xml:space="preserve">
     <value>A toolkit for creating Metro / Modern UI styled WPF apps.</value>
   </data>
-    <data name="Library_NewtonsoftJson_Description" xml:space="preserve">
-    <value>Json.NET is a popular high-performance JSON framework for .NET</value>
-  </data>
     <data name="Library_Octokit_Description" xml:space="preserve">
     <value>A GitHub API client library for .NET</value>
   </data>

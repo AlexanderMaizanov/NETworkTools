@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
+using AsyncAwaitBestPractices;
 using log4net;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
@@ -18,16 +20,14 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class BitCalculatorViewModel : ViewModelBase
+public class BitCalculatorViewModel : ViewModelBase, IDisposable
 {
     #region Variables
 
+    private CancellationTokenSource _cancellationTokenSource = new();
     private readonly IDialogCoordinator _dialogCoordinator;
-
     private static readonly ILog Log = LogManager.GetLogger(typeof(BitCalculatorViewModel));
-
     private readonly bool _isLoading;
-
     private string _input;
 
     public string Input
@@ -165,10 +165,12 @@ public class BitCalculatorViewModel : ViewModelBase
         Calculate();
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction().ConfigureAwait(false));
+    public ICommand ExportCommand => new RelayCommand(_ => ExportAction(_cancellationTokenSource.Token).SafeFireAndForget(ConfigureAwaitOptions.None));
 
-    private async Task ExportAction()
+    private async Task ExportAction(CancellationToken cancellationToken)
     {
+        if (cancellationToken.IsCancellationRequested)
+        { return; }
         var customDialog = new CustomDialog
         {
             Title = Strings.Export
@@ -176,6 +178,8 @@ public class BitCalculatorViewModel : ViewModelBase
 
         var exportViewModel = new ExportViewModel(async instance =>
             {
+                if (cancellationToken.IsCancellationRequested)
+                { return; }
                 await _dialogCoordinator.HideMetroDialogAsync(this, customDialog);
 
                 try
@@ -212,13 +216,13 @@ public class BitCalculatorViewModel : ViewModelBase
 
     #region Methods
 
-    private async void Calculate()
+    private void Calculate()
     {
         IsResultVisible = false;
         IsRunning = true;
 
         if (double.TryParse(Input.Replace('.', ','), out var input))
-            Result = await BitCalculator.CalculateAsync(input, Unit, SettingsManager.Current.BitCalculator_Notation);
+            Result =  BitCalculator.Calculate(input, Unit, SettingsManager.Current.BitCalculator_Notation);
         else
             Log.Error($"Could not parse input \"{Input}\" into double!");
 
@@ -232,7 +236,7 @@ public class BitCalculatorViewModel : ViewModelBase
     private void AddInputToHistory(string input)
     {
         // Create the new list
-        var list = ListHelper.Modify(SettingsManager.Current.BitCalculator_InputHistory.ToList(), input,
+        var list = ListHelper.Modify([.. SettingsManager.Current.BitCalculator_InputHistory], input,
             SettingsManager.Current.General_HistoryListEntries);
 
         // Clear the old items
@@ -249,6 +253,14 @@ public class BitCalculatorViewModel : ViewModelBase
 
     public void OnViewHide()
     {
+    }
+    /// <summary>
+    /// Releases all resources used by the current instance of <see cref="BitCalculatorViewModel" />
+    /// </summary>
+    public void Dispose()
+    {
+        _cancellationTokenSource.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     #endregion

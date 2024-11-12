@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -46,12 +46,18 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(DNSLookupRecordInfo.DomainName)},{nameof(DNSLookupRecordInfo.TTL)},{nameof(DNSLookupRecordInfo.RecordClass)},{nameof(DNSLookupRecordInfo.RecordType)},{nameof(DNSLookupRecordInfo.Result)},{nameof(DNSLookupRecordInfo.NameServerIPAddress)},{nameof(DNSLookupRecordInfo.NameServerHostName)},{nameof(DNSLookupRecordInfo.NameServerPort)}");
+        _ = stringBuilder.AppendJoin(",",
+            nameof(DNSLookupRecordInfo.DomainName),nameof(DNSLookupRecordInfo.TTL),nameof(DNSLookupRecordInfo.RecordClass),nameof(DNSLookupRecordInfo.RecordType),
+            nameof(DNSLookupRecordInfo.Result),nameof(DNSLookupRecordInfo.NameServerIPAddress),nameof(DNSLookupRecordInfo.NameServerHostName),
+            nameof(DNSLookupRecordInfo.NameServerPort)
+            ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.DomainName},{info.TTL},{info.RecordClass},{info.RecordType},{info.Result},{info.NameServerIPAddress},{info.NameServerHostName},{info.NameServerPort}");
+            _ = stringBuilder.AppendJoin(",",
+                info.DomainName,info.TTL,info.RecordClass,info.RecordType,
+                info.Result,info.NameServerIPAddress,info.NameServerHostName,
+                info.NameServerPort
+            ).AppendLine();
 
         File.WriteAllText(filePath, stringBuilder.ToString());
     }
@@ -88,10 +94,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<DNSLookupRecordInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 collection[i].DomainName,
                 collection[i].TTL,
@@ -103,6 +109,6 @@ public static partial class ExportManager
                 collection[i].NameServerPort
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

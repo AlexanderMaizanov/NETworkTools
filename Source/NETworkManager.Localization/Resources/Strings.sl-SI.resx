@@ -2832,9 +2832,6 @@ $$hostname$$--&gt;Ime gostitelja</value>
     <data name="Library_MahAppsMetro_Description" xml:space="preserve">
     <value>Zbirka orodij za ustvarjanje aplikacij v slogu Metro/Modernega uporabniškega vmesnika WPF.</value>
   </data>
-    <data name="Library_NewtonsoftJson_Description" xml:space="preserve">
-    <value>Json.NET je priljubljen visokozmogljiv okvir JSON za .NET</value>
-  </data>
     <data name="Library_Octokit_Description" xml:space="preserve">
     <value>Odjemalska knjižnica API GitHub za .NET</value>
   </data>

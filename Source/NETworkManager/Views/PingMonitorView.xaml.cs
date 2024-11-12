@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Net;
+using System.Threading;
+using System.Threading.Tasks;
 using MahApps.Metro.Controls.Dialogs;
 using NETworkManager.ViewModels;
 
@@ -37,9 +39,9 @@ public partial class PingMonitorView
         _viewModel.Stop();
     }
 
-    public async void Export()
+    public Task Export(CancellationToken cancellationToken)
     {
-        await _viewModel.ExportAsync(_viewModel.CancellationTokenSource.Token).ConfigureAwait(false);
+        return _viewModel.ExportAsync(cancellationToken);
     }
 
     private void Dispatcher_ShutdownStarted(object sender, EventArgs e)

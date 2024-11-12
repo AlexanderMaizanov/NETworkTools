@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using AsyncAwaitBestPractices;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using NETworkManager.Localization.Resources;
@@ -27,8 +28,7 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
     #region Variables
 
     private readonly IDialogCoordinator _dialogCoordinator;
-
-    private CancellationTokenSource _cancellationTokenSource;
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
 
     private readonly DispatcherTimer _searchDispatcherTimer = new();
 
@@ -343,11 +343,11 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
         RemoveGroup(group.ToString());
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction());
+    public ICommand ExportCommand => new RelayCommand(_ => ExportAction().SafeFireAndForget(ConfigureAwaitOptions.None));
 
-    private void ExportAction()
+    private async Task ExportAction()
     {
-        SelectedHost?.Export();
+        await SelectedHost?.Export(_cancellationTokenSource.Token);
     }
 
     public ICommand AddProfileCommand => new RelayCommand(_ => AddProfileAction());
@@ -435,8 +435,6 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
     {
         IsStatusMessageDisplayed = false;
         IsRunning = true;
-
-        _cancellationTokenSource = new CancellationTokenSource();
 
         // Resolve hostnames
         (List<(IPAddress ipAddress, string hostname)> hosts, List<string> hostnamesNotResolved) hosts;

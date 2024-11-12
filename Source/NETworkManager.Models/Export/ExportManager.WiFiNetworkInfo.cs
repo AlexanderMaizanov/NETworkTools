@@ -4,9 +4,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -46,14 +46,20 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(WiFiNetworkInfo.AvailableNetwork.Bssid)},{nameof(WiFiNetworkInfo.AvailableNetwork.Ssid)},{nameof(WiFiNetworkInfo.AvailableNetwork.ChannelCenterFrequencyInKilohertz)},{nameof(WiFiNetworkInfo.AvailableNetwork.SignalBars)},{nameof(WiFiNetworkInfo.AvailableNetwork.IsWiFiDirect)},{nameof(WiFiNetworkInfo.AvailableNetwork.NetworkRssiInDecibelMilliwatts)},{nameof(WiFiNetworkInfo.AvailableNetwork.PhyKind)},{nameof(WiFiNetworkInfo.AvailableNetwork.NetworkKind)},{nameof(WiFiNetworkInfo.AvailableNetwork.SecuritySettings.NetworkAuthenticationType)},{nameof(WiFiNetworkInfo.AvailableNetwork.SecuritySettings.NetworkEncryptionType)},{nameof(WiFiNetworkInfo.AvailableNetwork.BeaconInterval)}.{nameof(WiFiNetworkInfo.AvailableNetwork.Uptime)}");
+        stringBuilder.AppendJoin(",",
+            nameof(WiFiNetworkInfo.AvailableNetwork.Bssid), nameof(WiFiNetworkInfo.AvailableNetwork.Ssid), nameof(WiFiNetworkInfo.AvailableNetwork.ChannelCenterFrequencyInKilohertz), nameof(WiFiNetworkInfo.AvailableNetwork.SignalBars),
+            nameof(WiFiNetworkInfo.AvailableNetwork.IsWiFiDirect), nameof(WiFiNetworkInfo.AvailableNetwork.NetworkRssiInDecibelMilliwatts), nameof(WiFiNetworkInfo.AvailableNetwork.PhyKind), nameof(WiFiNetworkInfo.AvailableNetwork.NetworkKind),
+            nameof(WiFiNetworkInfo.AvailableNetwork.SecuritySettings.NetworkAuthenticationType), nameof(WiFiNetworkInfo.AvailableNetwork.SecuritySettings.NetworkEncryptionType), nameof(WiFiNetworkInfo.AvailableNetwork.BeaconInterval), nameof(WiFiNetworkInfo.AvailableNetwork.Uptime)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.AvailableNetwork.Bssid},{info.AvailableNetwork.Ssid},{info.AvailableNetwork.ChannelCenterFrequencyInKilohertz},{info.AvailableNetwork.SignalBars},{info.AvailableNetwork.IsWiFiDirect},{info.AvailableNetwork.NetworkRssiInDecibelMilliwatts},{info.AvailableNetwork.PhyKind},{info.AvailableNetwork.NetworkKind},{info.AvailableNetwork.SecuritySettings.NetworkAuthenticationType},{info.AvailableNetwork.SecuritySettings.NetworkEncryptionType},{info.AvailableNetwork.BeaconInterval},{info.AvailableNetwork.Uptime}");
+            stringBuilder.AppendJoin(",",
+                info.AvailableNetwork.Bssid, info.AvailableNetwork.Ssid, info.AvailableNetwork.ChannelCenterFrequencyInKilohertz, info.AvailableNetwork.SignalBars,
+                info.AvailableNetwork.IsWiFiDirect, info.AvailableNetwork.NetworkRssiInDecibelMilliwatts, info.AvailableNetwork.PhyKind, info.AvailableNetwork.NetworkKind,
+                info.AvailableNetwork.SecuritySettings.NetworkAuthenticationType, info.AvailableNetwork.SecuritySettings.NetworkEncryptionType, info.AvailableNetwork.BeaconInterval, info.AvailableNetwork.Uptime
+            ).AppendLine();
 
-        File.WriteAllText(filePath, stringBuilder.ToString());
+        File.WriteAllText(filePath, stringBuilder.ToString(), Encoding.UTF8);
     }
 
     /// <summary>
@@ -104,10 +110,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<WiFiNetworkInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 collection[i].AvailableNetwork.Bssid,
                 collection[i].AvailableNetwork.Ssid,
@@ -126,6 +132,6 @@ public static partial class ExportManager
                 Uptime = collection[i].AvailableNetwork.Uptime.ToString()
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

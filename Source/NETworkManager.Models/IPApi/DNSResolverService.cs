@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Text.Json;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NETworkManager.Utilities;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.IPApi;
 
@@ -32,7 +32,8 @@ public class DNSResolverService : SingletonBase<DNSResolverService>
             if (response.IsSuccessStatusCode)
             {
                 var json = await response.Content.ReadAsStringAsync();
-                var info = JsonConvert.DeserializeObject<DNSResolverDeserializationInfo>(json);
+                var info = JsonSerializer.Deserialize<DNSResolverDeserializationInfo>(json);
+                
 
                 return new DNSResolverResult(DNSResolverInfo.Parse(info));
             }

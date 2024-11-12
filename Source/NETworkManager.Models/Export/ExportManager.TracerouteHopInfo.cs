@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -46,14 +46,26 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(TracerouteHopInfo.Hop)},{nameof(TracerouteHopInfo.Status1)},{nameof(TracerouteHopInfo.Time1)},{nameof(TracerouteHopInfo.Status2)},{nameof(TracerouteHopInfo.Time2)},{nameof(TracerouteHopInfo.Status3)}{nameof(TracerouteHopInfo.Time3)},{nameof(TracerouteHopInfo.IPAddress)},{nameof(TracerouteHopInfo.Hostname)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.Continent)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.Country)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.Region)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.City)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.District)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.Isp)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.Org)}, {nameof(TracerouteHopInfo.IPGeolocationResult.Info.As)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.Asname)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.Hosting)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.Proxy)},{nameof(TracerouteHopInfo.IPGeolocationResult.Info.Mobile)}");
+        stringBuilder.AppendJoin(",",
+            nameof(TracerouteHopInfo.Hop), nameof(TracerouteHopInfo.Status1), nameof(TracerouteHopInfo.Time1), nameof(TracerouteHopInfo.Status2),
+            nameof(TracerouteHopInfo.Time2), nameof(TracerouteHopInfo.Status3), nameof(TracerouteHopInfo.Time3), nameof(TracerouteHopInfo.IPAddress),
+            nameof(TracerouteHopInfo.Hostname), nameof(TracerouteHopInfo.IPGeolocationResult.Info.Continent), nameof(TracerouteHopInfo.IPGeolocationResult.Info.Country), nameof(TracerouteHopInfo.IPGeolocationResult.Info.Region),
+            nameof(TracerouteHopInfo.IPGeolocationResult.Info.City), nameof(TracerouteHopInfo.IPGeolocationResult.Info.District), nameof(TracerouteHopInfo.IPGeolocationResult.Info.Isp), nameof(TracerouteHopInfo.IPGeolocationResult.Info.Org),
+            nameof(TracerouteHopInfo.IPGeolocationResult.Info.As), nameof(TracerouteHopInfo.IPGeolocationResult.Info.Asname), nameof(TracerouteHopInfo.IPGeolocationResult.Info.Hosting), nameof(TracerouteHopInfo.IPGeolocationResult.Info.Proxy),
+            nameof(TracerouteHopInfo.IPGeolocationResult.Info.Mobile)
+        ).AppendLine();
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{info.Hop},{info.Status1},{Ping.TimeToString(info.Status1, info.Time1, true)},{info.Status2},{Ping.TimeToString(info.Status2, info.Time2, true)},{info.Status3},{Ping.TimeToString(info.Status3, info.Time3, true)},{info.IPAddress},{info.Hostname},{info.IPGeolocationResult.Info.Continent},{info.IPGeolocationResult.Info.Country},{info.IPGeolocationResult.Info.Region},{info.IPGeolocationResult.Info.City},{info.IPGeolocationResult.Info.District},{info.IPGeolocationResult.Info.Isp?.Replace(",", "")},{info.IPGeolocationResult.Info.Org?.Replace(",", "")},{info.IPGeolocationResult.Info.As?.Replace(",", "")},{info.IPGeolocationResult.Info.Asname?.Replace(",", "")},{info.IPGeolocationResult.Info.Hosting},{info.IPGeolocationResult.Info.Proxy},{info.IPGeolocationResult.Info.Mobile}");
+            stringBuilder.AppendJoin(",",
+                info.Hop, info.Status1, Ping.TimeToString(info.Status1, info.Time1, true), info.Status2, 
+                Ping.TimeToString(info.Status2, info.Time2, true), info.Status3, Ping.TimeToString(info.Status3, info.Time3, true), info.IPAddress,
+                info.Hostname, info.IPGeolocationResult.Info.Continent, info.IPGeolocationResult.Info.Country, info.IPGeolocationResult.Info.Region,
+                info.IPGeolocationResult.Info.City, info.IPGeolocationResult.Info.District, info.IPGeolocationResult.Info.Isp?.Replace(",", ""),info.IPGeolocationResult.Info.Org?.Replace(",", ""),
+                info.IPGeolocationResult.Info.As?.Replace(",", ""), info.IPGeolocationResult.Info.Asname?.Replace(",", ""), info.IPGeolocationResult.Info.Hosting, info.IPGeolocationResult.Info.Proxy,
+                info.IPGeolocationResult.Info.Mobile
+            ).AppendLine();
 
-        File.WriteAllText(filePath, stringBuilder.ToString());
+        File.WriteAllText(filePath, stringBuilder.ToString(), Encoding.UTF8);
     }
 
     /// <summary>
@@ -116,10 +128,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<TracerouteHopInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 collection[i].Hop,
                 Status1 = collection[i].Status1.ToString(),
@@ -144,6 +156,6 @@ public static partial class ExportManager
                 collection[i].IPGeolocationResult.Info.Mobile
             };
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

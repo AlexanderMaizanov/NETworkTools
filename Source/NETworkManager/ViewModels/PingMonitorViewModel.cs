@@ -50,7 +50,7 @@ public class PingMonitorViewModel : ViewModelBase
     #region Variables
 
     private readonly IDialogCoordinator _dialogCoordinator;
-    private CancellationTokenSource _cancellationTokenSource;
+    private readonly CancellationTokenSource _cancellationTokenSource = new ();
 
     public readonly Guid HostId;
     private readonly Action<Guid> _removeHostByGuid;
@@ -357,8 +357,6 @@ public class PingMonitorViewModel : ViewModelBase
         // Reset chart
         ResetTimeChart();
 
-        _cancellationTokenSource = new CancellationTokenSource();
-
         var ping = new Ping(SettingsManager.Current.PingMonitor_WaitTime, SettingsManager.Current.PingMonitor_Timeout, SettingsManager.Current.PingMonitor_TTL, SettingsManager.Current.PingMonitor_DontFragment)
         {
             Buffer = new byte[SettingsManager.Current.PingMonitor_Buffer]
@@ -405,11 +403,12 @@ public class PingMonitorViewModel : ViewModelBase
         };
 
         var exportViewModel = new ExportViewModel(async instance =>
-            {
-                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog);
+            {                
+                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken);
 
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     ExportManager.Export(instance.FilePath, instance.FileType,
                         new ObservableCollection<PingInfo>(_pingInfoList));
                 }
@@ -425,7 +424,7 @@ public class PingMonitorViewModel : ViewModelBase
 
                 SettingsManager.Current.PingMonitor_ExportFileType = instance.FileType;
                 SettingsManager.Current.PingMonitor_ExportFilePath = instance.FilePath;
-            }, _ => { _dialogCoordinator.HideMetroDialogAsync(this, customDialog); },
+            }, async _ => { await _dialogCoordinator.HideMetroDialogAsync(this, customDialog); },
             [
                 ExportFileType.Csv, ExportFileType.Xml, ExportFileType.Json
             ], false,

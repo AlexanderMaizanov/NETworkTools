@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
 using NETworkManager.Utilities;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -47,64 +47,37 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(IPScannerHostInfo.IsReachable)}," +
-            $"{nameof(PingInfo.IPAddress)}," +
-            $"{nameof(IPScannerHostInfo.Hostname)}," +
-            $"PingStatus," +
-            $"{nameof(PingInfo.Timestamp)}," +
-            $"{nameof(PingInfo.Time)}," +
-            $"{nameof(PingInfo.TTL)}," +
-            $"{nameof(PingInfo.Bytes)}" +
-            $"PortStatus," +
-            $"{nameof(IPScannerHostInfo.Ports)}," +
-            $"NetBIOSIsReachable," +
-            $"NetBIOSIPAddress," +
-            $"NetBIOSComputerName," +
-            $"NetBIOSUserName," +
-            $"NetBIOSGroupName," +
-            $"NetBIOSMACAddress," +
-            $"NetBIOSVendor," +
-            $"{nameof(IPScannerHostInfo.MACAddress)}," +
-            $"{nameof(IPScannerHostInfo.Vendor)}," +
-            $"{nameof(IPScannerHostInfo.ARPMACAddress)}," +
-            $"{nameof(IPScannerHostInfo.ARPVendor)}"
-        );
+        stringBuilder.AppendJoin(",",
+            nameof(IPScannerHostInfo.IsReachable), nameof(PingInfo.IPAddress),nameof(IPScannerHostInfo.Hostname), "PingStatus",
+            nameof(PingInfo.Timestamp), nameof(PingInfo.Time), nameof(PingInfo.TTL), nameof(PingInfo.Bytes),
+            "PortStatus", nameof(IPScannerHostInfo.Ports), "NetBIOSIsReachable", "NetBIOSIPAddress",
+            "NetBIOSComputerName", "NetBIOSUserName", "NetBIOSGroupName", "NetBIOSMACAddress",
+            "NetBIOSVendor", nameof(IPScannerHostInfo.MACAddress), nameof(IPScannerHostInfo.Vendor), nameof(IPScannerHostInfo.ARPMACAddress),
+            nameof(IPScannerHostInfo.ARPVendor)
+        ).AppendLine();
 
+        var stringBuilderPorts = new StringBuilder();
         foreach (var info in collection)
         {
-            var stringBuilderPorts = new StringBuilder();
+            stringBuilderPorts.Clear();
 
             foreach (var port in info.Ports)
-                stringBuilderPorts.Append(
-                    $"{port.Port}/{port.LookupInfo.Protocol}/{port.LookupInfo.Service}/{port.LookupInfo.Description}/{port.State};");
+                stringBuilderPorts.AppendJoin("/",
+                    port.Port,port.LookupInfo.Protocol,port.LookupInfo.Service,port.LookupInfo.Description,port.State
+                ).Append(';');
 
-            stringBuilder.AppendLine(
-                $"{info.IsReachable}," +
-                $"{info.PingInfo.IPAddress}," +
-                $"{info.Hostname}," +
-                $"{info.PingInfo.Status}," +
-                $"{DateTimeHelper.DateTimeToFullDateTimeString(info.PingInfo.Timestamp)}," +
-                $"{Ping.TimeToString(info.PingInfo.Status, info.PingInfo.Time, true)}," +
-                $"{info.PingInfo.TTL}," +
-                $"{info.PingInfo.Bytes}" +
-                $"{(info.IsAnyPortOpen ? PortState.Open : PortState.Closed)}," +
-                $"\"{stringBuilderPorts.ToString().TrimEnd(';')}\"," +
-                $"{info.NetBIOSInfo.IsReachable}," +
-                $"{info.NetBIOSInfo.IPAddress}," +
-                $"{info.NetBIOSInfo.ComputerName}," +
-                $"{info.NetBIOSInfo.UserName}," +
-                $"{info.NetBIOSInfo.GroupName}," +
-                $"{info.NetBIOSInfo.MACAddress}," +
-                $"{info.NetBIOSInfo.Vendor}," +
-                $"{info.MACAddress}," +
-                $"\"{info.Vendor}\"," +
-                $"{info.ARPMACAddress}," +
-                $"\"{info.ARPVendor}\""
-            );
+            stringBuilder.AppendJoin(",",
+                info.IsReachable,info.PingInfo.IPAddress,info.Hostname,
+                info.PingInfo.Status,DateTimeHelper.DateTimeToFullDateTimeString(info.PingInfo.Timestamp),
+                Ping.TimeToString(info.PingInfo.Status, info.PingInfo.Time, true),info.PingInfo.TTL,
+                info.PingInfo.Bytes,info.IsAnyPortOpen ? PortState.Open : PortState.Closed,
+                $"\"{stringBuilderPorts}\"",info.NetBIOSInfo.IsReachable,info.NetBIOSInfo.IPAddress,info.NetBIOSInfo.ComputerName,
+                info.NetBIOSInfo.UserName,info.NetBIOSInfo.GroupName,info.NetBIOSInfo.MACAddress, $"\"{info.NetBIOSInfo.Vendor}\"",
+                info.MACAddress,info.Vendor,info.ARPMACAddress,$"\"{info.ARPVendor}\""
+            ).AppendLine();
         }
 
-        File.WriteAllText(filePath, stringBuilder.ToString());
+        File.WriteAllText(filePath, stringBuilder.ToString(), Encoding.UTF8);
     }
 
     /// <summary>
@@ -164,14 +137,14 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<IPScannerHostInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
         {
-            var jsonDataPorts = new object[collection[i].Ports.Count];
+            var rawDataPorts = new object[collection[i].Ports.Count];
 
             for (var j = 0; j < collection[i].Ports.Count; j++)
-                jsonDataPorts[j] = new
+                rawDataPorts[j] = new
                 {
                     collection[i].Ports[j].Port,
                     Protocol = collection[i].Ports[j].LookupInfo.Protocol.ToString(),
@@ -180,7 +153,7 @@ public static partial class ExportManager
                     State = collection[i].Ports[j].State.ToString()
                 };
 
-            jsonData[i] = new
+            rawData[i] = new
             {
                 collection[i].IsReachable,
                 IPAddress = collection[i].PingInfo.IPAddress.ToString(),
@@ -192,7 +165,7 @@ public static partial class ExportManager
                 collection[i].PingInfo.Bytes,
                 collection[i].DNSHostname,
                 PortStatus = collection[i].IsAnyPortOpen ? PortState.Open.ToString() : PortState.Closed.ToString(),
-                Ports = jsonDataPorts,
+                Ports = rawDataPorts,
                 NetBIOSIsReachable = collection[i].NetBIOSInfo.IsReachable,
                 NetBIOSIPAddress = collection[i].NetBIOSInfo.IPAddress?.ToString(),
                 NetBIOSComputerName = collection[i].NetBIOSInfo.ComputerName,
@@ -207,6 +180,6 @@ public static partial class ExportManager
             };
         }
 
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

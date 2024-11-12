@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Threading;
 using System.Windows.Data;
 using System.Windows.Input;
 using NETworkManager.Documentation;
@@ -53,6 +54,8 @@ public class AboutViewModel : ViewModelBase
     #endregion
 
     #region Variables
+
+    private CancellationTokenSource _cancellationTokenSource = new();
 
     public string Version => $"{Strings.Version} {AssemblyManager.Current.Version}";
 

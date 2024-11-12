@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using NETworkManager.Models.Network;
 using NETworkManager.Utilities;
-using Newtonsoft.Json;
 
 namespace NETworkManager.Models.Export;
 
@@ -46,12 +46,13 @@ public static partial class ExportManager
     {
         var stringBuilder = new StringBuilder();
 
-        stringBuilder.AppendLine(
-            $"{nameof(PingInfo.Timestamp)},{nameof(PingInfo.IPAddress)},{nameof(PingInfo.Hostname)},{nameof(PingInfo.Bytes)},{nameof(PingInfo.Time)},{nameof(PingInfo.TTL)},{nameof(PingInfo.Status)}");
+        stringBuilder.AppendJoin(",",
+            nameof(PingInfo.Timestamp),nameof(PingInfo.IPAddress),nameof(PingInfo.Hostname),nameof(PingInfo.Bytes),nameof(PingInfo.Time),nameof(PingInfo.TTL),nameof(PingInfo.Status)
+        );
 
         foreach (var info in collection)
-            stringBuilder.AppendLine(
-                $"{DateTimeHelper.DateTimeToFullDateTimeString(info.Timestamp)},{info.IPAddress},{info.Hostname},{info.Bytes},{Ping.TimeToString(info.Status, info.Time, true)},{info.TTL},{info.Status}");
+            stringBuilder.AppendJoin(",",
+                DateTimeHelper.DateTimeToFullDateTimeString(info.Timestamp),info.IPAddress,info.Hostname,info.Bytes,Ping.TimeToString(info.Status, info.Time, true),info.TTL,info.Status);
 
         File.WriteAllText(filePath, stringBuilder.ToString());
     }
@@ -88,10 +89,10 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     private static void CreateJson(IReadOnlyList<PingInfo> collection, string filePath)
     {
-        var jsonData = new object[collection.Count];
+        var rawData = new object[collection.Count];
 
         for (var i = 0; i < collection.Count; i++)
-            jsonData[i] = new
+            rawData[i] = new
             {
                 Timestamp = DateTimeHelper.DateTimeToFullDateTimeString(collection[i].Timestamp),
                 IPAddress = collection[i].IPAddress.ToString(),
@@ -101,7 +102,6 @@ public static partial class ExportManager
                 collection[i].TTL,
                 Status = collection[i].Status.ToString()
             };
-
-        File.WriteAllText(filePath, JsonConvert.SerializeObject(jsonData, Formatting.Indented));
+        File.WriteAllText(filePath, JsonSerializer.Serialize(rawData, typeof(object[]), jsonSerializerOptions), Encoding.UTF8);
     }
 }

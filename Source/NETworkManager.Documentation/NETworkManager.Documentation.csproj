@@ -32,7 +32,6 @@
         <None Remove="Licenses\Microsoft.Windows.CsWinRT.txt" />
         <None Remove="Licenses\Microsoft.Xaml.Behaviors.Wpf.txt" />
         <None Remove="Licenses\NETworkManager.txt" />
-        <None Remove="Licenses\Newtonsoft.Json.txt" />
         <None Remove="Licenses\nulastudio.NetBeauty.txt" />
         <None Remove="Licenses\Octokit.txt" />
         <None Remove="Licenses\PSDiscoveryProtocol.txt" />
@@ -94,9 +93,6 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
         <Content Include="Licenses\NETworkManager.txt">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Include="Licenses\Newtonsoft.Json.txt">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
         <Content Include="Licenses\Octokit.txt">
