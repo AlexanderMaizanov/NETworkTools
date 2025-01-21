@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Net.NetworkInformation;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using NETworkManager.Models.IPApi;
@@ -29,6 +30,8 @@ public class IPApiDNSResolverWidgetViewModel : ViewModelBase
 
     #region Variables
 
+    private readonly CancellationTokenSource _cancellationTokenSource;
+    
     private bool _isRunning;
 
     public bool IsRunning
@@ -73,6 +76,7 @@ public class IPApiDNSResolverWidgetViewModel : ViewModelBase
 
         // Detect if settings have changed...
         SettingsManager.Current.PropertyChanged += SettingsManager_PropertyChanged;
+        _cancellationTokenSource = new();
     }
 
     private void LoadSettings()
@@ -115,7 +119,7 @@ public class IPApiDNSResolverWidgetViewModel : ViewModelBase
         // Make the user happy, let him see a reload animation (and he cannot spam the reload command)        
         await Task.Delay(2000);
 
-        Result = await DNSResolverService.GetInstance().GetDNSResolverAsync();
+        Result = await DNSResolverService.GetInstance().GetDNSResolverAsync(_cancellationTokenSource.Token);
 
         IsRunning = false;
     }

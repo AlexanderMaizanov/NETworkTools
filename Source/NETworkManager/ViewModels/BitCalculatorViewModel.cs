@@ -24,7 +24,7 @@ public class BitCalculatorViewModel : ViewModelBase, IDisposable
 {
     #region Variables
 
-    private CancellationTokenSource _cancellationTokenSource = new();
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly IDialogCoordinator _dialogCoordinator;
     private static readonly ILog Log = LogManager.GetLogger(typeof(BitCalculatorViewModel));
     private readonly bool _isLoading;

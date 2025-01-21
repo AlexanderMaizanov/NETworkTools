@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
@@ -34,6 +35,7 @@ public class LookupOUILookupViewModel : ViewModelBase
         // Result view
         ResultsView = CollectionViewSource.GetDefaultView(Results);
         ResultsView.SortDescriptions.Add(new SortDescription(nameof(OUIInfo.MACAddress), ListSortDirection.Ascending));
+        _cancellationTokenSource = new();
     }
 
     #endregion
@@ -59,6 +61,7 @@ public class LookupOUILookupViewModel : ViewModelBase
 
     #region Variables
 
+    private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly IDialogCoordinator _dialogCoordinator;
 
     private string _search;
@@ -209,7 +212,7 @@ public class LookupOUILookupViewModel : ViewModelBase
         // Get OUI information's by MAC-Address
         // ReSharper disable once ForeachCanBePartlyConvertedToQueryUsingAnotherGetEnumerator (Doesn't work with async/await)
         foreach (var macAddress in macAddresses)
-        foreach (var info in await OUILookup.LookupByMacAddressAsync(macAddress))
+        foreach (var info in await OUILookup.LookupByMacAddressAsync(macAddress, _cancellationTokenSource.Token))
             results.Add(info);
 
         // Get OUI information's by Vendor

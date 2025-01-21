@@ -28,6 +28,7 @@ public class AboutViewModel : ViewModelBase
 
         ResourcesView = CollectionViewSource.GetDefaultView(ResourceManager.List);
         ResourcesView.SortDescriptions.Add(new SortDescription(nameof(ResourceInfo.Name), ListSortDirection.Ascending));
+        _cancellationTokenSource = new();
     }
 
     #endregion
@@ -55,7 +56,7 @@ public class AboutViewModel : ViewModelBase
 
     #region Variables
 
-    private CancellationTokenSource _cancellationTokenSource = new();
+    private readonly CancellationTokenSource _cancellationTokenSource;
 
     public string Version => $"{Strings.Version} {AssemblyManager.Current.Version}";
 

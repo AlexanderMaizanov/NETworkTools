@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
@@ -63,6 +64,7 @@ public class ARPTableViewModel : ViewModelBase
             x.TimeUnit == SettingsManager.Current.ARPTable_AutoRefreshTime.TimeUnit);
         AutoRefreshEnabled = SettingsManager.Current.ARPTable_AutoRefreshEnabled;
 
+        _cancellationTokenSource = new();
         _isLoading = false;
     }
 
@@ -70,6 +72,7 @@ public class ARPTableViewModel : ViewModelBase
 
     #region Variables
 
+    private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly IDialogCoordinator _dialogCoordinator;
 
     private readonly bool _isLoading;
@@ -246,41 +249,42 @@ public class ARPTableViewModel : ViewModelBase
 
     #region ICommands & Actions
 
-    public ICommand RefreshCommand => new RelayCommand(_ => RefreshAction().ConfigureAwait(false), Refresh_CanExecute);
+    public ICommand RefreshCommand => new RelayCommand(_ => RefreshAction(_cancellationTokenSource.Token).ConfigureAwait(false), Refresh_CanExecute);
 
     private bool Refresh_CanExecute(object parameter)
     {
         return Application.Current.MainWindow != null && !((MetroWindow)Application.Current.MainWindow).IsAnyDialogOpen;
     }
 
-    private async Task RefreshAction()
+    private async Task RefreshAction(CancellationToken cancellationToken)
     {
         IsStatusMessageDisplayed = false;
 
-        await Refresh();
+        await Refresh(cancellationToken).ConfigureAwait(false);
     }
 
     public ICommand DeleteTableCommand =>
-        new RelayCommand(_ => DeleteTableAction().ConfigureAwait(false), DeleteTable_CanExecute);
+        new RelayCommand(_ => DeleteTableAction(_cancellationTokenSource.Token).ConfigureAwait(false), DeleteTable_CanExecute);
 
     private bool DeleteTable_CanExecute(object parameter)
     {
         return Application.Current.MainWindow != null && !((MetroWindow)Application.Current.MainWindow).IsAnyDialogOpen;
     }
 
-    private async Task DeleteTableAction()
+    private async Task DeleteTableAction(CancellationToken cancellationToken)
     {
         IsStatusMessageDisplayed = false;
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var arpTable = new ARP();
 
             arpTable.UserHasCanceled += ArpTable_UserHasCanceled;
 
-            await arpTable.DeleteTableAsync();
+            await arpTable.DeleteTableAsync(cancellationToken);
 
-            await Refresh();
+            await Refresh(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -290,7 +294,7 @@ public class ARPTableViewModel : ViewModelBase
     }
 
     public ICommand DeleteEntryCommand =>
-        new RelayCommand(_ => DeleteEntryAction().ConfigureAwait(false), DeleteEntry_CanExecute);
+        new RelayCommand(_ => DeleteEntryAction(_cancellationTokenSource.Token).ConfigureAwait(false), DeleteEntry_CanExecute);
 
     private bool DeleteEntry_CanExecute(object parameter)
     {
@@ -299,19 +303,20 @@ public class ARPTableViewModel : ViewModelBase
                    .IsAnyDialogOpen;
     }
 
-    private async Task DeleteEntryAction()
+    private async Task DeleteEntryAction(CancellationToken cancellationToken)
     {
         IsStatusMessageDisplayed = false;
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var arpTable = new ARP();
 
             arpTable.UserHasCanceled += ArpTable_UserHasCanceled;
 
-            await arpTable.DeleteEntryAsync(SelectedResult.IPAddress.ToString());
+            await arpTable.DeleteEntryAsync(SelectedResult.IPAddress.ToString(), cancellationToken).ConfigureAwait(false);
 
-            await Refresh();
+            await Refresh(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -321,7 +326,7 @@ public class ARPTableViewModel : ViewModelBase
     }
 
     public ICommand AddEntryCommand =>
-        new RelayCommand(_ => AddEntryAction().ConfigureAwait(false), AddEntry_CanExecute);
+        new RelayCommand(_ => AddEntryAction(_cancellationTokenSource.Token).ConfigureAwait(false), AddEntry_CanExecute);
 
     private bool AddEntry_CanExecute(object parameter)
     {
@@ -330,7 +335,7 @@ public class ARPTableViewModel : ViewModelBase
                    .IsAnyDialogOpen;
     }
 
-    private async Task AddEntryAction()
+    private async Task AddEntryAction(CancellationToken cancellationToken)
     {
         IsStatusMessageDisplayed = false;
 
@@ -345,13 +350,15 @@ public class ARPTableViewModel : ViewModelBase
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 var arpTable = new ARP();
 
                 arpTable.UserHasCanceled += ArpTable_UserHasCanceled;
 
-                await arpTable.AddEntryAsync(instance.IPAddress, MACAddressHelper.Format(instance.MACAddress, "-"));
+                await arpTable.AddEntryAsync(instance.IPAddress, MACAddressHelper.Format(instance.MACAddress, "-"), cancellationToken).ConfigureAwait(false);
 
-                await Refresh();
+                await Refresh(cancellationToken).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -368,9 +375,9 @@ public class ARPTableViewModel : ViewModelBase
         await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog);
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction().ConfigureAwait(false));
+    public ICommand ExportCommand => new RelayCommand(_ => ExportActionAsync(_cancellationTokenSource.Token).ConfigureAwait(false));
 
-    private async Task ExportAction()
+    private async Task ExportActionAsync(CancellationToken cancellationToken)
     {
         var customDialog = new CustomDialog
         {
@@ -383,6 +390,7 @@ public class ARPTableViewModel : ViewModelBase
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 ExportManager.Export(instance.FilePath, instance.FileType,
                     instance.ExportAll
                         ? Results
@@ -416,13 +424,13 @@ public class ARPTableViewModel : ViewModelBase
 
     #region Methods
 
-    private async Task Refresh()
+    private async Task Refresh(CancellationToken cancellationToken)
     {
         IsRefreshing = true;
 
         Results.Clear();
 
-        (await ARP.GetTableAsync()).ForEach(x => Results.Add(x));
+        (await ARP.GetTableAsync().WaitAsync(cancellationToken)).ForEach(x => Results.Add(x));
 
         IsRefreshing = false;
     }
@@ -457,7 +465,7 @@ public class ARPTableViewModel : ViewModelBase
         _autoRefreshTimer.Stop();
 
         // Refresh
-        await Refresh();
+        await Refresh(_cancellationTokenSource.Token);
 
         // Restart timer...
         _autoRefreshTimer.Start();

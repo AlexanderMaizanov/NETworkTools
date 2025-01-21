@@ -7,6 +7,7 @@ namespace NETworkManager.ViewModels;
 
 public class CredentialsPasswordProfileFileViewModel : ViewModelBase
 {
+    
     /// <summary>
     ///     Private variable for <see cref="IsPasswordEmpty" />.
     /// </summary>

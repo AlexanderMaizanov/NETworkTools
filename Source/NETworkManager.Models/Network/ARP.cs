@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using NETworkManager.Utilities;
 
@@ -174,9 +175,9 @@ public class ARP
     }
 
     // MAC separated with "-"
-    public Task AddEntryAsync(string ipAddress, string macAddress)
+    public Task AddEntryAsync(string ipAddress, string macAddress, CancellationToken cancellationToken)
     {
-        return Task.Run(() => AddEntry(ipAddress, macAddress));
+        return Task.Run(() => AddEntry(ipAddress, macAddress), cancellationToken);
     }
 
     private void AddEntry(string ipAddress, string macAddress)
@@ -186,9 +187,9 @@ public class ARP
         RunPowerShellCommand(command);
     }
 
-    public Task DeleteEntryAsync(string ipAddress)
+    public Task DeleteEntryAsync(string ipAddress, CancellationToken cancellationToken)
     {
-        return Task.Run(() => DeleteEntry(ipAddress));
+        return Task.Run(() => DeleteEntry(ipAddress), cancellationToken);
     }
 
     private void DeleteEntry(string ipAddress)
@@ -198,9 +199,9 @@ public class ARP
         RunPowerShellCommand(command);
     }
 
-    public Task DeleteTableAsync()
+    public Task DeleteTableAsync(CancellationToken cancellationToken)
     {
-        return Task.Run(() => DeleteTable());
+        return Task.Run(DeleteTable, cancellationToken);
     }
 
     private void DeleteTable()

@@ -28,7 +28,7 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
     #region Variables
 
     private readonly IDialogCoordinator _dialogCoordinator;
-    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly CancellationTokenSource _cancellationTokenSource;
 
     private readonly DispatcherTimer _searchDispatcherTimer = new();
 
@@ -269,6 +269,7 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
     public PingMonitorHostViewModel(IDialogCoordinator instance)
     {
         _isLoading = true;
+        _cancellationTokenSource = new();
 
         _dialogCoordinator = instance;
 
@@ -289,7 +290,6 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
         _searchDispatcherTimer.Tick += SearchDispatcherTimer_Tick;
 
         LoadSettings();
-
         _isLoading = false;
     }
 
@@ -320,7 +320,9 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
         if (IsRunning)
             Stop();
         else
-            Start().ConfigureAwait(false);
+            Start()
+                .WaitAsync(_cancellationTokenSource.Token)
+                .SafeFireAndForget(configureAwaitOptions: ConfigureAwaitOptions.None);
     }
 
     public ICommand PingProfileCommand => new RelayCommand(_ => PingProfileAction(), PingProfile_CanExecute);
@@ -333,7 +335,9 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
     private void PingProfileAction()
     {
         if (SetHost(SelectedProfile.PingMonitor_Host, SelectedProfile.Group))
-            Start().ConfigureAwait(false);
+            Start()
+                .WaitAsync(_cancellationTokenSource.Token)
+                .SafeFireAndForget(configureAwaitOptions: ConfigureAwaitOptions.None);
     }
 
     public ICommand CloseGroupCommand => new RelayCommand(CloseGroupAction);
@@ -347,7 +351,15 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
 
     private async Task ExportAction()
     {
-        await SelectedHost?.Export(_cancellationTokenSource.Token);
+        if (SelectedHost is null)
+        {
+            foreach (var host in Hosts) 
+            {
+                await host.Export(_cancellationTokenSource.Token);
+            }
+            return;
+        }
+        await SelectedHost.Export(_cancellationTokenSource.Token);
     }
 
     public ICommand AddProfileCommand => new RelayCommand(_ => AddProfileAction());
@@ -375,7 +387,9 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
 
     private void CopyAsProfileAction()
     {
-        ProfileDialogManager.ShowCopyAsProfileDialog(this, _dialogCoordinator, SelectedProfile).ConfigureAwait(false);
+        ProfileDialogManager
+            .ShowCopyAsProfileDialog(this, _dialogCoordinator, SelectedProfile)
+            .ConfigureAwait(false);
     }
 
     public ICommand DeleteProfileCommand => new RelayCommand(_ => DeleteProfileAction(), ModifyProfile_CanExecute);
@@ -391,7 +405,8 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
 
     private void EditGroupAction(object group)
     {
-        ProfileDialogManager.ShowEditGroupDialog(this, _dialogCoordinator, ProfileManager.GetGroup(group.ToString()))
+        ProfileDialogManager
+            .ShowEditGroupDialog(this, _dialogCoordinator, ProfileManager.GetGroup(group.ToString()))
             .ConfigureAwait(false);
     }
 

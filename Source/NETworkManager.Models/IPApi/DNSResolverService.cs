@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Net.Http;
 using System.Threading.Tasks;
 using NETworkManager.Utilities;
+using System.Threading;
 
 namespace NETworkManager.Models.IPApi;
 
@@ -23,16 +24,16 @@ public class DNSResolverService : SingletonBase<DNSResolverService>
     ///     Gets the IP DNS details from the API asynchronously.
     /// </summary>
     /// <returns>IP DNS information's as <see cref="DNSResolverResult" />.</returns>
-    public async Task<DNSResolverResult> GetDNSResolverAsync()
+    public async Task<DNSResolverResult> GetDNSResolverAsync(CancellationToken cancellationToken)
     {
         try
         {
-            var response = await _client.GetAsync(BaseUrl);
+            var response = await _client.GetAsync(BaseUrl, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.None);
 
             if (response.IsSuccessStatusCode)
             {
-                var json = await response.Content.ReadAsStringAsync();
-                var info = JsonSerializer.Deserialize<DNSResolverDeserializationInfo>(json);
+                var jsonStream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(ConfigureAwaitOptions.None);
+                var info = await JsonSerializer.DeserializeAsync<DNSResolverDeserializationInfo>(jsonStream, cancellationToken: cancellationToken).ConfigureAwait(false);
                 
 
                 return new DNSResolverResult(DNSResolverInfo.Parse(info));

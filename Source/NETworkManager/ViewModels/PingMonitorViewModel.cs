@@ -404,7 +404,7 @@ public class PingMonitorViewModel : ViewModelBase
 
         var exportViewModel = new ExportViewModel(async instance =>
             {                
-                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog).WaitAsync(cancellationToken);
+                await _dialogCoordinator.HideMetroDialogAsync(this, customDialog);
 
                 try
                 {

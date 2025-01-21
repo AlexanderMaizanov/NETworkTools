@@ -228,15 +228,16 @@
             </Grid>
             <Grid Grid.Column="2" Margin="0,0,0,0">
                 <liveChart:CartesianChart Series="{Binding Series}" LegendPosition="Hidden"> 
-                    <!--<liveChart:CartesianChart.Tooltip>
+                    <liveChart:CartesianChart.Tooltip>
                         <controls:LvlChartsPingTimeTooltip Background="Transparent" />
-                    </liveChart:CartesianChart.Tooltip>-->
+                    </liveChart:CartesianChart.Tooltip>
                     <!--<liveChart:CartesianChart.XAxes>
-                        <liveChart:Axis LabelFormatter="{Binding FormatterDate}">
+                        
+                        --><!--<liveChart:XAxis LabelFormatter="{Binding FormatterDate}">
                             <liveChart:Axis.Separator>
                                 <liveChart:Separator StrokeThickness="0" />
                             </liveChart:Axis.Separator>
-                        </liveChart:Axis>
+                        </liveChart:XAxis>--><!--
                     </liveChart:CartesianChart.XAxes>-->
                     <!--<liveChart:CartesianChart.YAxes>
                         <lvc:Axis MinValue="0" LabelFormatter="{Binding FormatterPingTime}">

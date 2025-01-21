@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 
@@ -64,9 +65,9 @@ public static class OUILookup
     /// </summary>
     /// <param name="macAddress">MAC address to get the OUI information's for.</param>
     /// <returns>List of <see cref="OUIInfo" />. Empty if nothing was found.</returns>
-    public static Task<List<OUIInfo>> LookupByMacAddressAsync(string macAddress)
+    public static Task<List<OUIInfo>> LookupByMacAddressAsync(string macAddress, CancellationToken cancellationToken)
     {
-        return Task.Run(() => LookupByMacAddress(macAddress));
+        return Task.Run(() => LookupByMacAddress(macAddress), cancellationToken);
     }
 
     /// <summary>

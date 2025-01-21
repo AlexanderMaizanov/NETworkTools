@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
 using NETworkManager.Models.Network;
@@ -67,9 +68,11 @@ public static class PortLookup
     /// </summary>
     /// <param name="port">Port number to get.</param>
     /// <returns>List of <see cref="PortLookupInfo" />. Empty if nothing was found.</returns>
-    public static Task<List<PortLookupInfo>> LookupByPortAsync(int port)
+    public static Task<List<PortLookupInfo>> LookupByPortAsync(int port, CancellationToken cancellationToken)
     {
-        return Task.Run(() => LookupByPort(port));
+        if (cancellationToken.IsCancellationRequested)
+            return Task.FromCanceled<List<PortLookupInfo>>(cancellationToken);
+        return Task.Run(() => LookupByPort(port), cancellationToken);
     }
 
     /// <summary>
@@ -89,9 +92,13 @@ public static class PortLookup
     /// </summary>
     /// <param name="search">Service or description to search for.</param>
     /// <returns>List of <see cref="PortLookupInfo" />. Empty if nothing was found.</returns>
-    public static Task<List<PortLookupInfo>> SearchByServiceAsync(string search)
+    public static Task<List<PortLookupInfo>> SearchByServiceAsync(string search, CancellationToken cancellationToken)
     {
-        return Task.Run(() => SearchByService(search));
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return Task.FromCanceled<List<PortLookupInfo>>(cancellationToken);
+        }
+        return Task.Run(() => SearchByService(search), cancellationToken);
     }
 
     /// <summary>
@@ -114,10 +121,14 @@ public static class PortLookup
     /// <param name="port">Port number to get.</param>
     /// <param name="protocol">Port protocol to get. Default is <see cref="TransportProtocol.Tcp" />.</param>
     /// <returns>Port and protocol as <see cref="PortLookupInfo" />. Empty if nothing was found.</returns>
-    public static Task<PortLookupInfo> LookupByPortAndProtocolAsync(int port,
+    public static Task<PortLookupInfo> LookupByPortAndProtocolAsync(int port, CancellationToken cancellationToken,
         TransportProtocol protocol = TransportProtocol.Tcp)
     {
-        return Task.Run(() => LookupByPortAndProtocol(port, protocol));
+        if (cancellationToken.IsCancellationRequested)
+        { 
+            return Task.FromCanceled<PortLookupInfo>(cancellationToken);
+        }
+        return Task.Run(() => LookupByPortAndProtocol(port, protocol), cancellationToken);
     }
 
     /// <summary>

@@ -58,7 +58,7 @@ public sealed class Updater
     }
 
     /// <summary>
-    ///     Checks on GitHub whether a new version of the program is available
+    ///     Checks asyncronously on GitHub whether a new version of the program is available
     /// </summary>
     /// <param name="userName">GitHub username like "BornToBeRoot".</param>
     /// <param name="projectName">GitHub repository like "NETworkManager".</param>
