@@ -32,8 +32,6 @@ public class TracerouteViewModel : ViewModelBase
     private static readonly ILog Log = LogManager.GetLogger(typeof(TracerouteViewModel));
 
     private readonly IDialogCoordinator _dialogCoordinator;
-    private CancellationTokenSource _cancellationTokenSource;
-
     private readonly Guid _tabId;
     private bool _firstLoad = true;
     private bool _closed;
@@ -170,8 +168,6 @@ public class TracerouteViewModel : ViewModelBase
     public TracerouteViewModel(IDialogCoordinator instance, Guid tabId, string host)
     {
         _dialogCoordinator = instance;
-        _cancellationTokenSource = new CancellationTokenSource();
-
         ConfigurationManager.Current.TracerouteTabCount++;
 
         _tabId = tabId;
@@ -188,13 +184,13 @@ public class TracerouteViewModel : ViewModelBase
         LoadSettings();
     }
 
-    public void OnLoaded()
+    public async Task OnLoaded()
     {
         if (!_firstLoad)
             return;
 
         if (!string.IsNullOrEmpty(Host))
-            StartTrace().ConfigureAwait(false);
+            await StartTrace().ConfigureAwait(false);
 
         _firstLoad = false;
     }
@@ -207,21 +203,19 @@ public class TracerouteViewModel : ViewModelBase
 
     #region ICommands & Actions
 
-    public ICommand TraceCommand => new RelayCommand(_ => TraceAction(), Trace_CanExecute);
+    public ICommand TraceCommand => new RelayCommand(async _ =>
+    {
+        if (IsRunning)
+            StopTrace();
+        else
+            await StartTrace().ConfigureAwait(false);
+    }, Trace_CanExecute);
 
     private bool Trace_CanExecute(object parameter)
     {
         return Application.Current.MainWindow != null &&
                !((MetroWindow)Application.Current.MainWindow)!.IsAnyDialogOpen;
-    }
-
-    private void TraceAction()
-    {
-        if (IsRunning)
-            StopTrace();
-        else
-            StartTrace().ConfigureAwait(false);
-    }
+    }    
 
     public ICommand RedirectDataToApplicationCommand => new RelayCommand(RedirectDataToApplicationAction);
 
@@ -273,7 +267,7 @@ public class TracerouteViewModel : ViewModelBase
     private void StopTrace()
     {
         CancelTrace = true;
-        _cancellationTokenSource.Cancel();
+        CancellationTokenSource.Cancel();
     }
 
     private async Task StartTrace()
@@ -281,6 +275,7 @@ public class TracerouteViewModel : ViewModelBase
         _ipGeolocationRateLimitIsReached = false;
         StatusMessage = string.Empty;
         IsStatusMessageDisplayed = false;
+        CancelTrace = false;
         IsRunning = true;
 
         Results.Clear();
@@ -293,7 +288,7 @@ public class TracerouteViewModel : ViewModelBase
         {
             var dnsResult =
                 await DNSClientHelper.ResolveAorAaaaAsync(Host,
-                    SettingsManager.Current.Network_ResolveHostnamePreferIPv4, _cancellationTokenSource.Token);
+                    SettingsManager.Current.Network_ResolveHostnamePreferIPv4, CancellationTokenSource.Token);
 
             if (dnsResult.HasError)
             {
@@ -323,11 +318,12 @@ public class TracerouteViewModel : ViewModelBase
             traceroute.MaximumHopsReached += Traceroute_MaximumHopsReached;
             traceroute.TraceError += Traceroute_TraceError;
             traceroute.UserHasCanceled += Traceroute_UserHasCanceled;
+            AddHostToHistory(Host);
 
-            traceroute.TraceAsync(ipAddress, _cancellationTokenSource.Token);
+            await traceroute.TraceRouteAsync(ipAddress, CancellationTokenSource.Token).ConfigureAwait(false);
 
             // Add the host to history
-            AddHostToHistory(Host);
+            
         }
         catch (Exception ex) // This will catch any exception
         {
@@ -418,7 +414,7 @@ public class TracerouteViewModel : ViewModelBase
 
     private void Traceroute_HopReceived(object sender, TracerouteHopReceivedArgs e)
     {
-        Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(delegate
+        Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
         {
             // Check error
             if (e.Args.IPGeolocationResult.HasError)
@@ -442,7 +438,7 @@ public class TracerouteViewModel : ViewModelBase
             }
 
             Results.Add(e.Args);
-        }));
+        });
     }
 
     private void Traceroute_MaximumHopsReached(object sender, MaximumHopsReachedArgs e)
@@ -454,7 +450,6 @@ public class TracerouteViewModel : ViewModelBase
     private void Traceroute_UserHasCanceled(object sender, EventArgs e)
     {
         DisplayStatusMessage(Strings.CanceledByUserMessage);
-        CancelTrace = false;
         IsRunning = false;
     }
 
