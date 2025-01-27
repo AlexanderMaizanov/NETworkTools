@@ -30,107 +30,98 @@ public sealed class Traceroute
 
     #region Methods
 
-    public void TraceAsync(IPAddress ipAddress, CancellationToken cancellationToken)
+    public async Task TraceRouteAsync(IPAddress ipAddress, CancellationToken cancellationToken)
     {
-        Task.Run(async () =>
+        try
         {
-            try
-            {
-                for (var i = 1; i < _options.MaximumHops + 1; i++)
-                {
-                    var tasks = new List<Task<Tuple<PingReply, long>>>();
+            var stopwatch = new Stopwatch();
+            var pingOptions = new PingOptions { Ttl = 1, DontFragment = _options.DontFragment };
+            var tasks = new List<Tuple<PingReply, long>>();
+            var ping = new System.Net.NetworkInformation.Ping();
 
+            for (var i = 1; i < _options.MaximumHops + 1; i++)
+            {                
+                var i1 = i;
+                pingOptions.Ttl = i1;
+
+                try
+                {
                     // Send 3 pings
+                    if (tasks.Count > 0)
+                    {
+                        tasks.Clear();
+                    }
                     for (var y = 0; y < 3; y++)
                     {
-                        var i1 = i;
+                        stopwatch.Restart();
+                        var pingReply = await ping.SendPingAsync(ipAddress, TimeSpan.FromMilliseconds(_options.Timeout), _options.Buffer, pingOptions, cancellationToken);
+                        stopwatch.Stop();
 
-                        tasks.Add(Task.Run(() =>
-                        {
-                            var stopwatch = new Stopwatch();
-
-                            PingReply pingReply;
-
-                            using (var ping = new System.Net.NetworkInformation.Ping())
-                            {
-                                stopwatch.Start();
-
-                                pingReply = ping.Send(ipAddress, _options.Timeout, _options.Buffer,
-                                    new PingOptions { Ttl = i1, DontFragment = _options.DontFragment });
-
-                                stopwatch.Stop();
-                            }
-
-                            return Tuple.Create(pingReply, stopwatch.ElapsedMilliseconds);
-                        }, cancellationToken));
+                        tasks.Add(Tuple.Create(pingReply, stopwatch.ElapsedMilliseconds));
                     }
-
-                    try
-                    {
-                        Task.WaitAll(tasks.ToArray());
-                    }
-                    catch (AggregateException ex)
-                    {
-                        // Remove duplicate messages
-                        OnTraceError(new TracerouteErrorArgs(string.Join(", ",
-                            ex.Flatten().InnerExceptions.Select(s => s.Message).Distinct())));
-                        return;
-                    }
-
-                    // Check results -> Get IP on success or TTL expired
-                    var ipAddressHop = (from task in tasks
-                        where task.Result.Item1.Status != IPStatus.TimedOut
-                        where task.Result.Item1.Status is IPStatus.TtlExpired or IPStatus.Success
-                        select task.Result.Item1.Address).FirstOrDefault();
-
-                    // Resolve Hostname
-                    var hostname = string.Empty;
-
-                    if (_options.ResolveHostname && ipAddressHop != null)
-                    {
-                        var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddressHop, cancellationToken);
-
-                        if (!dnsResult.HasError)
-                            hostname = dnsResult.Value;
-                    }
-
-                    IPGeolocationResult ipGeolocationResult = null;
-
-                    // Get IP geolocation info
-                    if (_options.CheckIPApiIPGeolocation && ipAddressHop != null &&
-                        !IPAddressHelper.IsPrivateIPAddress(ipAddressHop))
-                        ipGeolocationResult =
-                            await IPGeolocationService.GetInstance().GetIPGeolocationAsync($"{ipAddressHop}");
-
-                    OnHopReceived(new TracerouteHopReceivedArgs(new TracerouteHopInfo(i,
-                        tasks[0].Result.Item1.Status, tasks[0].Result.Item2,
-                        tasks[1].Result.Item1.Status, tasks[1].Result.Item2,
-                        tasks[2].Result.Item1.Status, tasks[2].Result.Item2,
-                        ipAddressHop, hostname, ipGeolocationResult ?? new IPGeolocationResult())));
-
-                    // Check if finished
-                    if (ipAddressHop != null && ipAddress.ToString() == ipAddressHop.ToString())
-                    {
-                        OnTraceComplete();
-                        return;
-                    }
-
-                    // Check for cancel
-                    if (!cancellationToken.IsCancellationRequested)
-                        continue;
-
-                    OnUserHasCanceled();
+                }
+                catch (AggregateException ex)
+                {
+                    // Remove duplicate messages
+                    OnTraceError(new TracerouteErrorArgs(string.Join(", ",
+                        ex.Flatten().InnerExceptions.Select(s => s.Message).Distinct())));
                     return;
                 }
 
-                // Max hops reached...
-                OnMaximumHopsReached(new MaximumHopsReachedArgs(_options.MaximumHops));
+                // Check results -> Get IP on success or TTL expired
+                var ipAddressHop = (from task in tasks
+                                    where task.Item1.Status != IPStatus.TimedOut
+                                    where task.Item1.Status is IPStatus.TtlExpired or IPStatus.Success
+                                    select task.Item1.Address).FirstOrDefault();
+
+                // Resolve Hostname
+                var hostname = string.Empty;
+
+                if (_options.ResolveHostname && ipAddressHop != null)
+                {
+                    var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddressHop, cancellationToken);
+
+                    if (!dnsResult.HasError)
+                        hostname = dnsResult.Value;
+                }
+
+                IPGeolocationResult ipGeolocationResult = null;
+
+                // Get IP geolocation info
+                if (_options.CheckIPApiIPGeolocation && ipAddressHop != null &&
+                    !IPAddressHelper.IsPrivateIPAddress(ipAddressHop))
+                    ipGeolocationResult =
+                        await IPGeolocationService.GetInstance().GetIPGeolocationAsync($"{ipAddressHop}");
+
+                OnHopReceived(new TracerouteHopReceivedArgs(new TracerouteHopInfo(i,
+                    tasks[0].Item1.Status, tasks[0].Item2,
+                    tasks[1].Item1.Status, tasks[1].Item2,
+                    tasks[2].Item1.Status, tasks[2].Item2,
+                    ipAddressHop, hostname, ipGeolocationResult ?? new IPGeolocationResult())));
+
+                // Check if finished
+                if (ipAddressHop != null && ipAddress.ToString() == ipAddressHop.ToString())
+                {
+                    OnTraceComplete();
+                    return;
+                }
+
+                // Check for cancel
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    OnUserHasCanceled();
+                    return;
+                }                
             }
-            catch (Exception ex)
-            {
-                OnTraceError(new TracerouteErrorArgs(ex.Message));
-            }
-        }, cancellationToken);
+
+            // Max hops reached...
+            OnMaximumHopsReached(new MaximumHopsReachedArgs(_options.MaximumHops));
+        }
+        catch (Exception ex)
+        {
+            OnTraceError(new TracerouteErrorArgs(ex.Message));
+        }
+
     }
 
     #endregion
