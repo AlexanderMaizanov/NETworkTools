@@ -255,7 +255,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
             return;
 
         if (!string.IsNullOrEmpty(Host))
-            await Start().ConfigureAwait(false);
+            await Start(CancellationTokenSource.Token).ConfigureAwait(false);
 
         _firstLoad = false;
     }
@@ -264,19 +264,19 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
 
     #region ICommands & Actions
 
-    public ICommand ScanCommand => new RelayCommand(_ => ScanAction(), Scan_CanExecute);
+    public ICommand ScanCommand => new RelayCommand(_ => ScanAction(CancellationTokenSource.Token), Scan_CanExecute);
 
     private bool Scan_CanExecute(object parameter)
     {
         return Application.Current.MainWindow != null && !((MetroWindow)Application.Current.MainWindow).IsAnyDialogOpen;
     }
 
-    private void ScanAction()
+    private async void ScanAction(CancellationToken cancellationToken)
     {
         if (IsRunning)
             Stop();
         else
-            Start().ConfigureAwait(false);
+            await Start(cancellationToken).ConfigureAwait(false);
     }
 
     public ICommand DetectSubnetCommand => new RelayCommand(_ => DetectSubnetAction());
@@ -366,7 +366,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
 
     #region Methods
 
-    private async Task Start()
+    private async Task Start(CancellationToken cancellationToken)
     {
         IsStatusMessageDisplayed = false;
         IsRunning = true;
@@ -426,8 +426,24 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         ipScanner.ScanComplete += ScanCompleted;
         ipScanner.ProgressChanged += ProgressChanged;
         ipScanner.UserHasCanceled += UserHasCanceled;
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await ipScanner.ScanAsync(hosts.hosts, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            UserHasCanceled(this, EventArgs.Empty);
+        }
+        catch (Exception ex)
+        {
+            Stop();
+            StatusMessage =
+                $"{Strings.UnkownError} {ex.Message}";
+            IsStatusMessageDisplayed = true;
+            
+        }
 
-        await ipScanner.ScanAsync(hosts.hosts, CancellationTokenSource.Token).ConfigureAwait(false);
     }
 
     private void Stop()
@@ -592,11 +608,14 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
     #endregion
 
     #region Events
-
     private void HostScanned(object sender, IPScannerHostScannedArgs e)
     {
-        Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-            new Action(delegate { Results.Add(e.Args); }));
+        Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal,() =>
+        {
+            if (Results.Any(h => h.PingInfo.IPAddressInt32 == e.Args.PingInfo.IPAddressInt32))
+                return;
+            Results.Add(e.Args);
+        });
     }
 
     private void ProgressChanged(object sender, ProgressChangedArgs e)
@@ -623,6 +642,10 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
 
         IsCanceling = false;
         IsRunning = false;
+        if (!CancellationTokenSource.TryReset())
+        {
+            CancellationTokenSource = new(); 
+        }
     }
 
     #endregion

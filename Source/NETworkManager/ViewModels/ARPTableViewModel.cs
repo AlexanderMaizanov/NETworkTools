@@ -53,7 +53,7 @@ public class ARPTableViewModel : ViewModelBase
         };
 
         // Get ARP table
-        Refresh().ConfigureAwait(false);
+        Refresh(CancellationTokenSource.Token).ConfigureAwait(false);
 
         // Auto refresh
         _autoRefreshTimer.Tick += AutoRefreshTimer_Tick;
@@ -64,7 +64,6 @@ public class ARPTableViewModel : ViewModelBase
             x.TimeUnit == SettingsManager.Current.ARPTable_AutoRefreshTime.TimeUnit);
         AutoRefreshEnabled = SettingsManager.Current.ARPTable_AutoRefreshEnabled;
 
-        _cancellationTokenSource = new();
         _isLoading = false;
     }
 
@@ -72,7 +71,6 @@ public class ARPTableViewModel : ViewModelBase
 
     #region Variables
 
-    private readonly CancellationTokenSource _cancellationTokenSource;
     private readonly IDialogCoordinator _dialogCoordinator;
 
     private readonly bool _isLoading;
@@ -249,7 +247,7 @@ public class ARPTableViewModel : ViewModelBase
 
     #region ICommands & Actions
 
-    public ICommand RefreshCommand => new RelayCommand(_ => RefreshAction(_cancellationTokenSource.Token).ConfigureAwait(false), Refresh_CanExecute);
+    public ICommand RefreshCommand => new RelayCommand(_ => RefreshAction(CancellationTokenSource.Token).ConfigureAwait(false), Refresh_CanExecute);
 
     private bool Refresh_CanExecute(object parameter)
     {
@@ -264,7 +262,7 @@ public class ARPTableViewModel : ViewModelBase
     }
 
     public ICommand DeleteTableCommand =>
-        new RelayCommand(_ => DeleteTableAction(_cancellationTokenSource.Token).ConfigureAwait(false), DeleteTable_CanExecute);
+        new RelayCommand(_ => DeleteTableAction(CancellationTokenSource.Token).ConfigureAwait(false), DeleteTable_CanExecute);
 
     private bool DeleteTable_CanExecute(object parameter)
     {
@@ -294,7 +292,7 @@ public class ARPTableViewModel : ViewModelBase
     }
 
     public ICommand DeleteEntryCommand =>
-        new RelayCommand(_ => DeleteEntryAction(_cancellationTokenSource.Token).ConfigureAwait(false), DeleteEntry_CanExecute);
+        new RelayCommand(_ => DeleteEntryAction(CancellationTokenSource.Token).ConfigureAwait(false), DeleteEntry_CanExecute);
 
     private bool DeleteEntry_CanExecute(object parameter)
     {
@@ -326,7 +324,7 @@ public class ARPTableViewModel : ViewModelBase
     }
 
     public ICommand AddEntryCommand =>
-        new RelayCommand(_ => AddEntryAction(_cancellationTokenSource.Token).ConfigureAwait(false), AddEntry_CanExecute);
+        new RelayCommand(_ => AddEntryAction(CancellationTokenSource.Token).ConfigureAwait(false), AddEntry_CanExecute);
 
     private bool AddEntry_CanExecute(object parameter)
     {
@@ -375,7 +373,7 @@ public class ARPTableViewModel : ViewModelBase
         await _dialogCoordinator.ShowMetroDialogAsync(this, customDialog);
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportActionAsync(_cancellationTokenSource.Token).ConfigureAwait(false));
+    public ICommand ExportCommand => new RelayCommand(_ => ExportActionAsync(CancellationTokenSource.Token).ConfigureAwait(false));
 
     private async Task ExportActionAsync(CancellationToken cancellationToken)
     {
@@ -465,7 +463,7 @@ public class ARPTableViewModel : ViewModelBase
         _autoRefreshTimer.Stop();
 
         // Refresh
-        await Refresh(_cancellationTokenSource.Token);
+        await Refresh(CancellationTokenSource.Token);
 
         // Restart timer...
         _autoRefreshTimer.Start();

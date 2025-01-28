@@ -28,7 +28,6 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
     #region Variables
 
     private readonly IDialogCoordinator _dialogCoordinator;
-    private readonly CancellationTokenSource _cancellationTokenSource;
 
     private readonly DispatcherTimer _searchDispatcherTimer = new();
 
@@ -269,8 +268,7 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
     public PingMonitorHostViewModel(IDialogCoordinator instance)
     {
         _isLoading = true;
-        _cancellationTokenSource = new();
-
+        
         _dialogCoordinator = instance;
 
         // Host history
@@ -321,7 +319,7 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
             Stop();
         else
             Start()
-                .WaitAsync(_cancellationTokenSource.Token)
+                .WaitAsync(CancellationTokenSource.Token)
                 .SafeFireAndForget(configureAwaitOptions: ConfigureAwaitOptions.None);
     }
 
@@ -336,7 +334,7 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
     {
         if (SetHost(SelectedProfile.PingMonitor_Host, SelectedProfile.Group))
             Start()
-                .WaitAsync(_cancellationTokenSource.Token)
+                .WaitAsync(CancellationTokenSource.Token)
                 .SafeFireAndForget(configureAwaitOptions: ConfigureAwaitOptions.None);
     }
 
@@ -355,11 +353,11 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
         {
             foreach (var host in Hosts) 
             {
-                await host.Export(_cancellationTokenSource.Token);
+                await host.Export(CancellationTokenSource.Token);
             }
             return;
         }
-        await SelectedHost.Export(_cancellationTokenSource.Token);
+        await SelectedHost.Export(CancellationTokenSource.Token);
     }
 
     public ICommand AddProfileCommand => new RelayCommand(_ => AddProfileAction());
@@ -457,7 +455,7 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
         try
         {
             hosts = await HostRangeHelper.ResolveAsync(HostRangeHelper.CreateListFromInput(Host),
-                SettingsManager.Current.Network_ResolveHostnamePreferIPv4, _cancellationTokenSource.Token);
+                SettingsManager.Current.Network_ResolveHostnamePreferIPv4, CancellationTokenSource.Token);
         }
         catch (OperationCanceledException)
         {
@@ -482,7 +480,7 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
                      new PingMonitorView(Guid.NewGuid(), RemoveHostByGuid, currentHost, _group)))
         {
             // Check if the user has canceled the operation
-            if (_cancellationTokenSource.IsCancellationRequested)
+            if (CancellationTokenSource.IsCancellationRequested)
             {
                 UserHasCanceled();
 
@@ -508,7 +506,7 @@ public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
     private void Stop()
     {
         IsCanceling = true;
-        _cancellationTokenSource.Cancel();
+        CancellationTokenSource.Cancel();
     }
 
     private void RemoveGroup(string group)
