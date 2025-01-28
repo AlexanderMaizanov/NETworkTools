@@ -1,28 +1,27 @@
 ﻿using System;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using NETworkManager.Utilities;
 
 namespace NETworkManager.Models.Network;
 
-public sealed class Ping
+public sealed class Ping(int waitTime, int timeout, int ttl, bool dontFragment)
 {
     #region Varaibles
 
     /// <summary>
     ///  The time between ping packets are sent, in milliseconds
     /// </summary>
-    public int WaitTime { get; private set; }
+    public int WaitTime { get; set; } = waitTime;
     /// <summary>
     ///  Timeout in milliseconds
     /// </summary>
-    public int Timeout { get; private set; }
+    public int Timeout { get; set; } = timeout;
     public byte[] Buffer { get; set; } = new byte[32];
-    public int TTL { get; private set; }
-    public bool DontFragment { get; private set; }
+    public int TTL { get; set; } = ttl;
+    public bool DontFragment { get; set; } = dontFragment;
     public PingInfo ResultInfo { get; set; }
 
     private const int _exceptionCancelCount = 3;
@@ -75,34 +74,28 @@ public sealed class Ping
         
     }
 
-
-    public Ping(int waitTime, int timeout, int ttl, bool dontFragment)
-    {
-        WaitTime = waitTime;
-        Timeout = timeout;
-        TTL = ttl;
-        DontFragment = dontFragment;
-    }
-
-    public Task SendAsync(IPAddress ipAddress, int timeout, byte[] buffer, CancellationToken cancellationToken)
+    public Task<PingInfo> SendAsync(IPAddress ipAddress, int timeout, byte[] buffer, bool resolve = true, CancellationToken cancellationToken = default)
     {
         Buffer = buffer;
         Timeout = timeout;
-        return SendAsync(ipAddress, cancellationToken);
+        return SendAsync(ipAddress, 0, resolve, cancellationToken);
     }
-    public async Task SendAsync(IPAddress ipAddress, CancellationToken cancellationToken)
+    public async Task<PingInfo> SendAsync(IPAddress ipAddress, int attempts = 0, bool resolve = true, CancellationToken cancellationToken = default)
     {
         var hostname = string.Empty;
         try
         {
             // Try to resolve PTR
-            var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddress, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.None);
-
-            if (!dnsResult.HasError)
+            if (resolve)
             {
-                hostname = dnsResult.Value;
+                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddress, cancellationToken);
 
-                OnHostnameResolved(new HostnameArgs(hostname));
+                if (!dnsResult.HasError)
+                {
+                    hostname = dnsResult.Value;
+
+                    OnHostnameResolved(new HostnameArgs(hostname));
+                } 
             }
 
             var errorCount = 0;
@@ -114,15 +107,16 @@ public sealed class Ping
             };
 
             using var ping = new System.Net.NetworkInformation.Ping();
+            var iterations = attempts > 0 ? attempts : 1;
 
-            do
+            while (!cancellationToken.IsCancellationRequested && iterations > 0)
             {
                 // Get timestamp 
                 var timestamp = DateTime.Now;
 
                 // Send ping
                 var pingReply = await ping.SendPingAsync(ipAddress, TimeSpan.FromMilliseconds(Timeout), Buffer, options, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.None);
-                                
+                
                 if (pingReply == null)
                 {
                     errorCount++;
@@ -138,33 +132,28 @@ public sealed class Ping
                     // Reset the error count (if no exception was thrown)
                     errorCount = 0;
                 }
+                ResultInfo = new PingInfo(timestamp, pingReply.Address, hostname,
+                                pingReply.Buffer.Length, pingReply.RoundtripTime, 
+                                pingReply.Status);
 
-                if (pingReply.Status == IPStatus.Success)
+                if (pingReply.Status != IPStatus.Success)
                 {
-                    if (ipAddress.AddressFamily == AddressFamily.InterNetwork)
-                        OnPingReceived(new PingReceivedArgs(
-                            new PingInfo(timestamp, pingReply.Address, hostname,
-                                pingReply.Buffer.Length, pingReply.RoundtripTime, pingReply.Options!.Ttl,
-                                pingReply.Status)));
-                    else
-                        OnPingReceived(new PingReceivedArgs(
-                            new PingInfo(timestamp, pingReply.Address, hostname,
-                                pingReply.Buffer.Length, pingReply.RoundtripTime, pingReply.Status)));
+                    ResultInfo.IPAddress = ipAddress;
+                    ResultInfo.TTL = options.Ttl;
                 }
                 else
                 {
-                    ResultInfo = new PingInfo(timestamp, pingReply.Address, hostname, pingReply.Status);
-                    OnPingReceived(new PingReceivedArgs(ResultInfo));
-
+                    ResultInfo.TTL = pingReply.Options.Ttl;
                 }
+                OnPingReceived(new PingReceivedArgs(ResultInfo));
                 // If ping is canceled... dont wait for example 5 seconds
-                for (var i = 0; i < WaitTime; i += 100)
+                for (var i = 0; i < WaitTime && !cancellationToken.IsCancellationRequested; i += 100)
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                        break;
                     await Task.Delay(100, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.None);
                 }
-            } while (!cancellationToken.IsCancellationRequested);
+                if(attempts != 0)
+                    iterations--;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -172,7 +161,7 @@ public sealed class Ping
         }
         // Currently not used (ping will run until the user cancels it)
         OnPingCompleted();
-        await Task.CompletedTask.ConfigureAwait(ConfigureAwaitOptions.None);        
+        return ResultInfo;
     }
 
     // Param: disableSpecialChar --> ExportManager --> "<" this char cannot be displayed in xml

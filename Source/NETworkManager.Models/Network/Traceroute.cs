@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -34,15 +33,14 @@ public sealed class Traceroute
     {
         try
         {
-            var stopwatch = new Stopwatch();
             var pingOptions = new PingOptions { Ttl = 1, DontFragment = _options.DontFragment };
-            var tasks = new List<Tuple<PingReply, long>>();
-            var ping = new System.Net.NetworkInformation.Ping();
+            var tasks = new List<PingInfo>();
+            var ping = new Ping(0, _options.Timeout, 1, _options.DontFragment);
 
             for (var i = 1; i < _options.MaximumHops + 1; i++)
-            {                
+            {
                 var i1 = i;
-                pingOptions.Ttl = i1;
+                ping.TTL = i1;
 
                 try
                 {
@@ -53,11 +51,9 @@ public sealed class Traceroute
                     }
                     for (var y = 0; y < 3; y++)
                     {
-                        stopwatch.Restart();
-                        var pingReply = await ping.SendPingAsync(ipAddress, TimeSpan.FromMilliseconds(_options.Timeout), _options.Buffer, pingOptions, cancellationToken);
-                        stopwatch.Stop();
-
-                        tasks.Add(Tuple.Create(pingReply, stopwatch.ElapsedMilliseconds));
+                        var pingReply = await ping.SendAsync(ipAddress, 0, _options.ResolveHostname, cancellationToken);
+                        
+                        tasks.Add(pingReply);
                     }
                 }
                 catch (AggregateException ex)
@@ -70,20 +66,20 @@ public sealed class Traceroute
 
                 // Check results -> Get IP on success or TTL expired
                 var ipAddressHop = (from task in tasks
-                                    where task.Item1.Status != IPStatus.TimedOut
-                                    where task.Item1.Status is IPStatus.TtlExpired or IPStatus.Success
-                                    select task.Item1.Address).FirstOrDefault();
+                                    where task.Status != IPStatus.TimedOut
+                                    where task.Status is IPStatus.TtlExpired or IPStatus.Success
+                                    select task.IPAddress).FirstOrDefault();
 
                 // Resolve Hostname
-                var hostname = string.Empty;
+                //var hostname = string.Empty;
 
-                if (_options.ResolveHostname && ipAddressHop != null)
-                {
-                    var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddressHop, cancellationToken);
+                //if (_options.ResolveHostname && ipAddressHop != null)
+                //{
+                //    var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddressHop, cancellationToken);
 
-                    if (!dnsResult.HasError)
-                        hostname = dnsResult.Value;
-                }
+                //    if (!dnsResult.HasError)
+                //        hostname = dnsResult.Value;
+                //}
 
                 IPGeolocationResult ipGeolocationResult = null;
 
@@ -94,10 +90,11 @@ public sealed class Traceroute
                         await IPGeolocationService.GetInstance().GetIPGeolocationAsync($"{ipAddressHop}");
 
                 OnHopReceived(new TracerouteHopReceivedArgs(new TracerouteHopInfo(i,
-                    tasks[0].Item1.Status, tasks[0].Item2,
-                    tasks[1].Item1.Status, tasks[1].Item2,
-                    tasks[2].Item1.Status, tasks[2].Item2,
-                    ipAddressHop, hostname, ipGeolocationResult ?? new IPGeolocationResult())));
+                    tasks[0].Status, tasks[0].Time,
+                    tasks[1].Status, tasks[1].Time,
+                    tasks[2].Status, tasks[2].Time,
+                    ipAddressHop, tasks[0].Hostname,
+                    ipGeolocationResult ?? new IPGeolocationResult())));
 
                 // Check if finished
                 if (ipAddressHop != null && ipAddress.ToString() == ipAddressHop.ToString())
