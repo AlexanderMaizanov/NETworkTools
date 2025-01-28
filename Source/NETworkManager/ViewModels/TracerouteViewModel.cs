@@ -32,6 +32,8 @@ public class TracerouteViewModel : ViewModelBase
     private static readonly ILog Log = LogManager.GetLogger(typeof(TracerouteViewModel));
 
     private readonly IDialogCoordinator _dialogCoordinator;
+    private CancellationTokenSource _cancellationTokenSource;
+
     private readonly Guid _tabId;
     private bool _firstLoad = true;
     private bool _closed;
@@ -168,6 +170,8 @@ public class TracerouteViewModel : ViewModelBase
     public TracerouteViewModel(IDialogCoordinator instance, Guid tabId, string host)
     {
         _dialogCoordinator = instance;
+        _cancellationTokenSource = new CancellationTokenSource();
+
         ConfigurationManager.Current.TracerouteTabCount++;
 
         _tabId = tabId;

@@ -70,16 +70,7 @@ public sealed class Traceroute
                                     where task.Status is IPStatus.TtlExpired or IPStatus.Success
                                     select task.IPAddress).FirstOrDefault();
 
-                // Resolve Hostname
-                //var hostname = string.Empty;
-
-                //if (_options.ResolveHostname && ipAddressHop != null)
-                //{
-                //    var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddressHop, cancellationToken);
-
-                //    if (!dnsResult.HasError)
-                //        hostname = dnsResult.Value;
-                //}
+                
 
                 IPGeolocationResult ipGeolocationResult = null;
 
