@@ -1,5 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using NETworkManager.Models.Network;
+﻿using NETworkManager.Models.Network;
 
 namespace NETworkManager.Models.Lookup;
 

@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Text.Json;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Threading;
 using System.Threading.Tasks;
 using NETworkManager.Utilities;
 
@@ -18,6 +18,8 @@ public class IPGeolocationService : SingletonBase<IPGeolocationService>
     ///     Base URL fo the ip-api free endpoint.
     /// </summary>
     private const string BaseUrl = "http://ip-api.com/json/";
+    //private const string Token = "3o2icb2ney6dopz4";
+    //private const string BaseUrl = "https://api.2ip.io/";
 
     /// <summary>
     ///     Fields to be returned by the API. See documentation for more details.
@@ -25,7 +27,7 @@ public class IPGeolocationService : SingletonBase<IPGeolocationService>
     private const string Fields =
         "status,message,continent,continentCode,country,countryCode,region,regionName,city,district,zip,lat,lon,timezone,offset,currency,isp,org,as,asname,reverse,mobile,proxy,hosting,query";
 
-    private readonly HttpClient _client = new();
+    private readonly HttpClient _client = new() { BaseAddress = new Uri(BaseUrl)};
 
     /// <summary>
     ///     Indicates whether we have reached the rate limit.
@@ -54,17 +56,17 @@ public class IPGeolocationService : SingletonBase<IPGeolocationService>
     /// </summary>
     /// <param name="ipAddressOrFqdn">IP address or FQDN to get the geolocation information's from.</param>
     /// <returns>IP geolocation information's as <see cref="IPGeolocationResult" />.</returns>
-    public async Task<IPGeolocationResult> GetIPGeolocationAsync(string ipAddressOrFqdn = "")
+    public async Task<IPGeolocationResult> GetIPGeolocationAsync(string ipAddressOrFqdn = "", CancellationToken cancellationToken = default)
     {
         if (IsInRateLimit())
             return new IPGeolocationResult(true, _rateLimitRemainingTime);
 
         // If the url is empty, the current IP address from which the request is made is used.
         var url = $"{BaseUrl}/{ipAddressOrFqdn}?fields={Fields}";
-
+        //var url = $"{ipAddressOrFqdn}?token={Token}";
         try
         {
-            var response = await _client.GetAsync(url);
+            var response = await _client.GetAsync(url, cancellationToken);
 
             // Check if the request was successful.
             if (response.IsSuccessStatusCode)
@@ -75,8 +77,8 @@ public class IPGeolocationService : SingletonBase<IPGeolocationService>
                         "The rate limit values couldn't be extracted from the http header. The request was probably corrupted. Try again in a few seconds.",
                         -1);
 
-                var json = await response.Content.ReadAsStringAsync();
-                var info = JsonSerializer.Deserialize<IPGeolocationInfo>(json);
+                var json = await response.Content.ReadAsStringAsync(cancellationToken);
+                var info = IPGeolocationInfo.FromJson(json);//JsonSerializer.Deserialize<IPGeolocationInfo>(json);
 
                 return new IPGeolocationResult(info);
             }

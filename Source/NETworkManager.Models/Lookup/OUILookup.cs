@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,7 +15,7 @@ namespace NETworkManager.Models.Lookup;
 /// <summary>
 ///     Class for looking up OUI information.
 /// </summary>
-public static class OUILookup
+public static partial class OUILookup
 {
     #region Constructor
 
@@ -23,7 +24,7 @@ public static class OUILookup
     /// </summary>
     static OUILookup()
     {
-        OUIInfoList = new List<OUIInfo>();
+        OUIInfoList = [];
 
         var document = new XmlDocument();
         document.Load(OuiFilePath);
@@ -40,6 +41,12 @@ public static class OUILookup
 
     #region Variables
 
+
+    /// <summary>
+    ///     
+    /// </summary>
+    public static bool ExternalLookup { get; set; }
+
     /// <summary>
     ///     Path to the xml file with the oui information's located in the resources folder.
     /// </summary>
@@ -54,8 +61,16 @@ public static class OUILookup
     /// <summary>
     ///     Lookup of <see cref="OUIInfo" /> with OUI information. Key is the MAC address.
     /// </summary>
-    private static readonly Lookup<string, OUIInfo> OUIInfoLookup;
+    private static Lookup<string, OUIInfo> OUIInfoLookup;
 
+    /// <summary>
+    ///     
+    /// 
+    /// </summary>
+    private static readonly HttpClient _httpClientMCL = new() 
+    {
+        BaseAddress = new Uri("https://www.macvendorlookup.com/api/v2/")
+    };
     #endregion
 
     #region Methods
@@ -67,7 +82,31 @@ public static class OUILookup
     /// <returns>List of <see cref="OUIInfo" />. Empty if nothing was found.</returns>
     public static Task<List<OUIInfo>> LookupByMacAddressAsync(string macAddress, CancellationToken cancellationToken)
     {
-        return Task.Run(() => LookupByMacAddress(macAddress), cancellationToken);
+        var lookupTask = Task.FromResult(LookupByMacAddress(macAddress));
+
+        if(ExternalLookup && !cancellationToken.IsCancellationRequested)
+        {
+            lookupTask = LookupMacVendorApiAsync(macAddress, cancellationToken);
+        }
+
+        return lookupTask;
+    }
+
+    private static async Task<List<OUIInfo>> LookupMacVendorApiAsync(string macAddress, CancellationToken cancellationToken)
+    {
+        var result = new List<OUIInfo>();
+        string ouiKey = PrepareMacAddress(macAddress);
+        result = OUIInfoLookup[ouiKey].ToList();
+        if (!OUIInfoLookup.Contains(ouiKey))
+        {
+            var response = await _httpClientMCL.GetStringAsync(macAddress, cancellationToken);
+            result = JsonSerializer.Deserialize<List<OUIInfo>>(response);
+            result.ForEach(i => i.MACAddress = ouiKey);
+            //var list = OUIInfoLookup.ToList();
+             //   list.Add(new [] { ouiKey, result });
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -77,9 +116,13 @@ public static class OUILookup
     /// <returns>List of <see cref="OUIInfo" />. Empty if nothing was found.</returns>
     public static List<OUIInfo> LookupByMacAddress(string macAddress)
     {
-        var ouiKey = Regex.Replace(macAddress, "[-|:|.]", "")[..6].ToUpper();
-
+        string ouiKey = PrepareMacAddress(macAddress);
         return OUIInfoLookup[ouiKey].ToList();
+    }
+
+    private static string PrepareMacAddress(string macAddress)
+    {
+        return PreMacRegex().Replace(macAddress, "")[..6].ToUpper();
     }
 
     /// <summary>
@@ -128,6 +171,9 @@ public static class OUILookup
                 select info
             ).ToList();
     }
+
+    [GeneratedRegex("[-|:|.]")]
+    private static partial Regex PreMacRegex();
 
     #endregion
 }

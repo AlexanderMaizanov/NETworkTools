@@ -50,42 +50,40 @@ public static class NetBIOSResolver
         udpClient.Client.ReceiveTimeout = timeout;
 
         var remoteEndPoint = new IPEndPoint(ipAddress, NetBIOSUdpPort);
-        var result = new NetBIOSInfo 
-        {
-            IPAddress = ipAddress
-        };
+        var result = new NetBIOSInfo(ipAddress);
 
         try
         {
-            await udpClient.SendAsync(RequestData, RequestData.Length, remoteEndPoint).ConfigureAwait(false);
+            await udpClient.SendAsync(RequestData, RequestData.Length, remoteEndPoint);
 
             // ReSharper disable once MethodSupportsCancellation - cancellation is handled below by Task.WhenAny
-            var response = await udpClient.ReceiveAsync(cancellationToken).ConfigureAwait(false);
+            var response = await udpClient.ReceiveAsync(cancellationToken);
 
             //if (!receiveTask.Wait(timeout, cancellationToken))
             //    return new NetBIOSInfo();
 
             //var response = receiveTask.Result;
-
+            ///TODO: Throw exception and Add logging when response is too short
             if (response.Buffer.Length < ResponseBaseLen || response.Buffer[ResponseTypePos] != ResponseTypeNbstat)
-                return new NetBIOSInfo(); // response was too short
+                return result; // response was too short
 
             var count = response.Buffer[ResponseBaseLen - 1] & 0xFF;
 
+            ///TODO: Throw exception and Add logging data was truncated or something is wrong
             if (response.Buffer.Length < ResponseBaseLen + ResponseBlockLen * count)
-                return new NetBIOSInfo(); // data was truncated or something is wrong
+                return result; // data was truncated or something is wrong
 
-            var tmp = ExtractNames(response.Buffer, count);
-            result.ComputerName = tmp.ComputerName;
-            result.UserName = tmp.UserName;
-            result.GroupName = tmp.GroupName;
-            result.MACAddress = MACAddressHelper.GetDefaultFormat(tmp.MacAddress);
+            var (ComputerName, UserName, GroupName, MacAddress) = ExtractNames(response.Buffer, count);
+            result.ComputerName = ComputerName;
+            result.UserName = UserName;
+            result.GroupName = GroupName;
+            result.MACAddress = MACAddressHelper.GetDefaultFormat(MacAddress);
 
             // ReSharper disable once InvertIf - readability
-            if (!string.IsNullOrEmpty(tmp.MacAddress))
+            if (!string.IsNullOrEmpty(MacAddress))
             {
                 // ReSharper disable once MethodHasAsyncOverload - Parent method is async
-                var info = OUILookup.LookupByMacAddress(tmp.MacAddress).FirstOrDefault();
+                var info = OUILookup.LookupByMacAddress(MacAddress).FirstOrDefault();
 
                 if (info != null)
                     result.Vendor = info.Vendor;

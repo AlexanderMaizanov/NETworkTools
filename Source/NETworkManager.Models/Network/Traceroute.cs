@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -34,8 +33,8 @@ public sealed class Traceroute
         try
         {
             var pingOptions = new PingOptions { Ttl = 1, DontFragment = _options.DontFragment };
-            var tasks = new List<PingInfo>();
             var ping = new Ping(0, _options.Timeout, 1, _options.DontFragment);
+            PingInfo[] results = [];
 
             for (var i = 1; i < _options.MaximumHops + 1; i++)
             {
@@ -45,16 +44,7 @@ public sealed class Traceroute
                 try
                 {
                     // Send 3 pings
-                    if (tasks.Count > 0)
-                    {
-                        tasks.Clear();
-                    }
-                    for (var y = 0; y < 3; y++)
-                    {
-                        var pingReply = await ping.SendAsync(ipAddress, 0, _options.ResolveHostname, cancellationToken);
-                        
-                        tasks.Add(pingReply);
-                    }
+                    results = await ping.SendAsync(ipAddress, 3, _options.ResolveHostname, cancellationToken).ConfigureAwait(false);
                 }
                 catch (AggregateException ex)
                 {
@@ -63,9 +53,14 @@ public sealed class Traceroute
                         ex.Flatten().InnerExceptions.Select(s => s.Message).Distinct())));
                     return;
                 }
-
+                // Check for cancel
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    OnUserHasCanceled();
+                    return;
+                }
                 // Check results -> Get IP on success or TTL expired
-                var ipAddressHop = (from task in tasks
+                var ipAddressHop = (from task in results
                                     where task.Status != IPStatus.TimedOut
                                     where task.Status is IPStatus.TtlExpired or IPStatus.Success
                                     select task.IPAddress).FirstOrDefault();
@@ -78,13 +73,13 @@ public sealed class Traceroute
                 if (_options.CheckIPApiIPGeolocation && ipAddressHop != null &&
                     !IPAddressHelper.IsPrivateIPAddress(ipAddressHop))
                     ipGeolocationResult =
-                        await IPGeolocationService.GetInstance().GetIPGeolocationAsync($"{ipAddressHop}");
-
+                        await IPGeolocationService.GetInstance().GetIPGeolocationAsync($"{ipAddressHop}", cancellationToken).ConfigureAwait(false);
+                
                 OnHopReceived(new TracerouteHopReceivedArgs(new TracerouteHopInfo(i,
-                    tasks[0].Status, tasks[0].Time,
-                    tasks[1].Status, tasks[1].Time,
-                    tasks[2].Status, tasks[2].Time,
-                    ipAddressHop, tasks[0].Hostname,
+                    results[0].Status, results[0].Time,
+                    results[1].Status, results[1].Time,
+                    results[2].Status, results[2].Time,
+                    ipAddressHop, results[0].Hostname,
                     ipGeolocationResult ?? new IPGeolocationResult())));
 
                 // Check if finished
@@ -107,7 +102,7 @@ public sealed class Traceroute
         }
         catch (Exception ex)
         {
-            OnTraceError(new TracerouteErrorArgs(ex.Message));
+            OnTraceError(new TracerouteErrorArgs(ex.Message + Environment.NewLine + ex.StackTrace));
         }
 
     }

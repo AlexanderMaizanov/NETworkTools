@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Threading;
@@ -74,32 +75,21 @@ public sealed class Ping(int waitTime, int timeout, int ttl, bool dontFragment)
         
     }
 
-    public Task<PingInfo> SendAsync(IPAddress ipAddress, int timeout, byte[] buffer, bool resolve = true, CancellationToken cancellationToken = default)
+    public async Task<PingInfo> SendAsync(IPAddress ipAddress, int timeout, byte[] buffer, bool resolve = true, CancellationToken cancellationToken = default)
     {
         Buffer = buffer;
         Timeout = timeout;
-        return SendAsync(ipAddress, 0, resolve, cancellationToken);
+        return (await SendAsync(ipAddress, 0, resolve, cancellationToken))[0];
     }
-    public async Task<PingInfo> SendAsync(IPAddress ipAddress, int attempts = 0, bool resolve = true, CancellationToken cancellationToken = default)
+    public async Task<PingInfo[]> SendAsync(IPAddress ipAddress, int attempts = 0, bool resolve = true, CancellationToken cancellationToken = default)
     {
         var hostname = string.Empty;
+        var lookupDns = resolve;
+        PingInfo[] results = [];
+        
         try
         {
-            // Try to resolve PTR
-            if (resolve)
-            {
-                var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(ipAddress, cancellationToken);
-
-                if (!dnsResult.HasError)
-                {
-                    hostname = dnsResult.Value;
-
-                    OnHostnameResolved(new HostnameArgs(hostname));
-                } 
-            }
-
             var errorCount = 0;
-
             var options = new PingOptions
             {
                 Ttl = TTL,
@@ -107,9 +97,9 @@ public sealed class Ping(int waitTime, int timeout, int ttl, bool dontFragment)
             };
 
             using var ping = new System.Net.NetworkInformation.Ping();
-            var iterations = attempts > 0 ? attempts : 1;
+            var iterations = attempts > 0 ? attempts : -1;
 
-            while (!cancellationToken.IsCancellationRequested && iterations > 0)
+            while (!cancellationToken.IsCancellationRequested && (iterations > 0 || iterations == -1))
             {
                 // Get timestamp 
                 var timestamp = DateTime.Now;
@@ -132,27 +122,44 @@ public sealed class Ping(int waitTime, int timeout, int ttl, bool dontFragment)
                     // Reset the error count (if no exception was thrown)
                     errorCount = 0;
                 }
+                
+                // Try to resolve PTR
+                if (lookupDns)
+                {
+                    var address = pingReply.Address; //pingReply.Status != IPStatus.Success && pingReply.Status != IPStatus.TtlExpired ? ipAddress : pingReply.Address;
+                    var dnsResult = await DNSClient.GetInstance().ResolvePtrAsync(address, cancellationToken);
+
+                    if (!dnsResult.HasError)
+                    {
+                        hostname = dnsResult.Value;
+
+                        OnHostnameResolved(new HostnameArgs(hostname));
+                    }
+                    lookupDns = false;
+                }
+
                 ResultInfo = new PingInfo(timestamp, pingReply.Address, hostname,
                                 pingReply.Buffer.Length, pingReply.RoundtripTime, 
                                 pingReply.Status);
 
-                if (pingReply.Status != IPStatus.Success)
+                if (pingReply.Status != IPStatus.Success && pingReply.Status != IPStatus.TtlExpired)
                 {
                     ResultInfo.IPAddress = ipAddress;
                     ResultInfo.TTL = options.Ttl;
                 }
-                else
-                {
-                    ResultInfo.TTL = pingReply.Options.Ttl;
-                }
+
                 OnPingReceived(new PingReceivedArgs(ResultInfo));
+                results = results.Append(ResultInfo).ToArray();
+                
                 // If ping is canceled... dont wait for example 5 seconds
                 for (var i = 0; i < WaitTime && !cancellationToken.IsCancellationRequested; i += 100)
                 {
                     await Task.Delay(100, cancellationToken).ConfigureAwait(ConfigureAwaitOptions.None);
                 }
-                if(attempts != 0)
+                if (iterations > 0)
+                {
                     iterations--;
+                }                
             }
         }
         catch (OperationCanceledException)
@@ -161,7 +168,7 @@ public sealed class Ping(int waitTime, int timeout, int ttl, bool dontFragment)
         }
         // Currently not used (ping will run until the user cancels it)
         OnPingCompleted();
-        return ResultInfo;
+        return results;
     }
 
     // Param: disableSpecialChar --> ExportManager --> "<" this char cannot be displayed in xml

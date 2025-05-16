@@ -64,6 +64,7 @@ public sealed class IPScanner(IPScannerOptions options)
             MaxDegreeOfParallelism = options.MaxPortThreads
         };
         var networkInterfaces = options.ResolveMACAddress ? NetworkInterface.GetNetworkInterfaces() : [];
+        var dnsHostname = host.hostname;
         IPScannerHostInfo hostInfo;
         try
         {
@@ -78,7 +79,7 @@ public sealed class IPScanner(IPScannerOptions options)
             // Start netbios lookup async (if enabled)
             var netBIOSInfo = options.NetBIOSEnabled
                 ? await NetBIOSResolver.ResolveAsync(host.ipAddress, options.NetBIOSTimeout, cancellationToken).ConfigureAwait(false)
-                : await Task.FromResult(new NetBIOSInfo { IPAddress = host.ipAddress, ComputerName = host.hostname, IsReachable = false }).ConfigureAwait(false);
+                : await Task.FromResult(new NetBIOSInfo(host.ipAddress)).ConfigureAwait(false);
 
 
             var isAnyPortOpen = portScanResults.Any(x => x.State == PortState.Open);
@@ -90,9 +91,9 @@ public sealed class IPScanner(IPScannerOptions options)
             if (isReachable || options.ShowAllResults)
             {
                 // DNS
-                var dnsHostname = string.Empty;
+                dnsHostname = pingInfo.Hostname;
 
-                if (options.ResolveHostname)
+                if (options.ResolveHostname && string.IsNullOrWhiteSpace(dnsHostname))
                 {
                     var dnsResolver = await DNSClient.GetInstance().ResolvePtrAsync(host.ipAddress, cancellationToken);
 
@@ -156,7 +157,7 @@ public sealed class IPScanner(IPScannerOptions options)
         }
         catch
         {
-
+            throw;
         }
         finally
         {
@@ -167,7 +168,7 @@ public sealed class IPScanner(IPScannerOptions options)
                                     string.Empty,
                                     string.Empty,
                                     false,
-                                    Array.Empty<PortInfo>().ToList(),
+                                    [],
                                     null,
                                     // ARP is default, fallback to netbios
                                     string.Empty,
@@ -210,9 +211,11 @@ public sealed class IPScanner(IPScannerOptions options)
                     : Task.FromResult(Enumerable.Empty<PortInfo>());
 
                 // Start netbios lookup async (if enabled)
+                var cts = new CancellationTokenSource();
+                cts.CancelAfter(options.NetBIOSTimeout + 100);
                 var netbiosTask = options.NetBIOSEnabled
-                    ? NetBIOSResolver.ResolveAsync(host.ipAddress, options.NetBIOSTimeout, cancellationToken)
-                    : Task.FromResult(new NetBIOSInfo());
+                    ? NetBIOSResolver.ResolveAsync(host.ipAddress, options.NetBIOSTimeout, cts.Token)
+                    : Task.FromResult(new NetBIOSInfo(host.ipAddress));
 
                 await Task.WhenAll([pingTask, portScanTask, netbiosTask]).ConfigureAwait(false);
                 // Get ping result
@@ -316,33 +319,33 @@ public sealed class IPScanner(IPScannerOptions options)
 
     private async Task<PingInfo> PingAsync(IPAddress ipAddress, CancellationToken cancellationToken)
     {
-
-        if (!_pingPool.TryDequeue(out var ping))
-        {
-            ping = new Ping();
-            _pingPool.Enqueue(ping);
-        }
         var timestamp = DateTime.Now;
-        for (var i = 0; i < options.ICMPAttempts; i++)
-        {
-            try
-            {
-                // Get timestamp 
-                cancellationToken.ThrowIfCancellationRequested();
-
-                await ping.SendAsync(ipAddress, options.ICMPTimeout, options.ICMPBuffer, cancellationToken)
-                                    .ConfigureAwait(ConfigureAwaitOptions.None);
-
-                return ping.ResultInfo;
-            }
-            catch (OperationCanceledException) { }
-        }
-        return new PingInfo
+        var result = new PingInfo()
         {
             Timestamp = timestamp,
             IPAddress = ipAddress,
             Status = IPStatus.Unknown
         };
+        try
+        {
+            if (!_pingPool.TryDequeue(out var ping))
+            {
+                ping = new Ping();
+                _pingPool.Enqueue(ping);
+            }
+
+            // Get timestamp
+            ping.Buffer = options.ICMPBuffer;
+            ping.Timeout = options.ICMPTimeout;
+            result = await ping.SendAsync(ipAddress, options.ICMPTimeout, options.ICMPBuffer, options.ResolveHostname, cancellationToken)
+                                .ConfigureAwait(ConfigureAwaitOptions.ContinueOnCapturedContext);
+        }
+        catch
+        {
+
+        }
+        return result;
+        
 
     }
     //TODO: Refactor to AsyncEnumerable

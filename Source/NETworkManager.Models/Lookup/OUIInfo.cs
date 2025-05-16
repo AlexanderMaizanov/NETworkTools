@@ -1,4 +1,6 @@
-﻿namespace NETworkManager.Models.Lookup;
+﻿using System.Text.Json.Serialization;
+
+namespace NETworkManager.Models.Lookup;
 
 /// <summary>
 ///     Class to hold OUI information.
@@ -24,5 +26,6 @@ public class OUIInfo
     /// <summary>
     ///     Name of the vendor.
     /// </summary>
+    [JsonPropertyName("company")]
     public string Vendor { get; set; }
 }
