@@ -12,7 +12,6 @@
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
         <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
         <NoWarn>1701;1702;CA1712</NoWarn>
-        <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     </PropertyGroup>
     <ItemGroup>
         <None Remove="Resources\Flags\cs-CZ.png" />
