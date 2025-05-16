@@ -22,14 +22,14 @@ public partial class TracerouteView : IDragablzTabItem
         Dispatcher.ShutdownStarted += Dispatcher_ShutdownStarted;
     }
 
-    public void CloseTab()
+    public async void CloseTab()
     {
-        _viewModel.OnClose();
+        await _viewModel.OnClose();
     }
 
-    private void UserControl_Loaded(object sender, RoutedEventArgs e)
+    private async void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
-        _viewModel.OnLoaded();
+        await _viewModel.OnLoaded();
     }
 
     private void Dispatcher_ShutdownStarted(object sender, EventArgs e)

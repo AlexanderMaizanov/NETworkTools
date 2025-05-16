@@ -111,7 +111,7 @@ public class LookupOUILookupViewModel : ViewModelBase
         }
     }
 
-    private ObservableCollection<OUIInfo> _results = new();
+    private ObservableCollection<OUIInfo> _results = [];
 
     public ObservableCollection<OUIInfo> Results
     {
@@ -190,7 +190,7 @@ public class LookupOUILookupViewModel : ViewModelBase
         IsRunning = true;
 
         Results.Clear();
-
+        OUILookup.ExternalLookup = true;
         var macAddresses = new HashSet<string>();
         var vendors = new HashSet<string>();
 

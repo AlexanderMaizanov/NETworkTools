@@ -1566,12 +1566,11 @@ public sealed partial class MainWindow : INotifyPropertyChanged
     // This is called after MainWindow() and before OnContentRendered() --> to register hotkeys...
     protected override void OnSourceInitialized(EventArgs e)
     {
-        base.OnSourceInitialized(e);
-
         _hwndSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
         _hwndSource?.AddHook(HwndHook);
 
         RegisterHotKeys();
+        base.OnSourceInitialized(e);
     }
 
     [DebuggerStepThrough]

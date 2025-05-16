@@ -367,7 +367,7 @@ public class PingMonitorViewModel : ViewModelBase
         ping.HostnameResolved += Ping_HostnameResolved;
         ping.UserHasCanceled += Ping_UserHasCanceled;
 
-        ping.SendAsync(IPAddress, 0, true, _cancellationTokenSource.Token).SafeFireAndForget();
+        ping.SendAsync(IPAddress, -1, true, _cancellationTokenSource.Token).SafeFireAndForget();
     }
 
     public void Stop()

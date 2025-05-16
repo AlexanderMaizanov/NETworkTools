@@ -10,9 +10,10 @@ public class NetBIOSInfo
     /// <summary>
     ///     Constructor for an unreachable host.
     /// </summary>
-    public NetBIOSInfo()
+    public NetBIOSInfo(IPAddress ipAddress)
     {
         IsReachable = false;
+        IPAddress = ipAddress;
     }
 
     /// <summary>

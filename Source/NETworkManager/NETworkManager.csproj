@@ -6,9 +6,9 @@
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>
         <PlatformTarget>x64</PlatformTarget>
         <SelfContained>false</SelfContained>
-        <!--<TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
-		
-		 Publish a single file can't be used when accessing assembly file path
+		<!--<SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>-->
+
+		<!-- Publish a single file can't be used when accessing assembly file path
         <PublishSingleFile>true</PublishSingleFile>
         <PublishReadyToRun>true</PublishReadyToRun>
         -->
@@ -40,12 +40,17 @@
         <BeautyHiddens>*.deps.json;*.runtimeconfig.json;*.dll.config</BeautyHiddens>
         -->
         <DisableBeauty>False</DisableBeauty>
-        <BeautyOnPublishOnly>False</BeautyOnPublishOnly>
+        <BeautyOnPublishOnly>True</BeautyOnPublishOnly>
         <BeautyEnableDebugging>False</BeautyEnableDebugging>
         <BeautyUsePatch>False</BeautyUsePatch>
         <BeautyLogLevel>Info</BeautyLogLevel>
-        <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     </PropertyGroup>
+    <ItemGroup>
+      <Compile Remove="publish\**" />
+      <EmbeddedResource Remove="publish\**" />
+      <None Remove="publish\**" />
+      <Page Remove="publish\**" />
+    </ItemGroup>
     <ItemGroup>
         <None Remove="log4net.config" />
         <None Remove="NETworkManager.ico" />
@@ -62,32 +67,39 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="AirspaceFixer" Version="1.0.6" />
-        <PackageReference Include="AsyncAwaitBestPractices" Version="8.0.0" />
-        <PackageReference Include="AsyncAwaitBestPractices.MVVM" Version="8.0.0" />
-        <PackageReference Include="AWSSDK.EC2" Version="3.7.414.2" />
+        <PackageReference Include="AsyncAwaitBestPractices" Version="9.0.0" />
+        <PackageReference Include="AsyncAwaitBestPractices.MVVM" Version="9.0.0" />
+        <PackageReference Include="AWSSDK.EC2" Version="4.0.6" />
         <PackageReference Include="DnsClient" Version="1.8.0" />
-        <PackageReference Include="gong-wpf-dragdrop" Version="3.2.1" />
-        <PackageReference Include="IPNetwork2" Version="3.0.667" />
-        <PackageReference Include="Lextm.SharpSnmpLib" Version="12.5.5" />
+        <PackageReference Include="gong-wpf-dragdrop" Version="4.0.0" />
+        <PackageReference Include="IPNetwork2" Version="3.1.764" />
+        <PackageReference Include="Lextm.SharpSnmpLib" Version="12.5.6" />
         <PackageReference Include="LiveChartsCore.SkiaSharpView.WPF" Version="2.0.0-rc2" />
         <PackageReference Include="LoadingIndicators.WPF" Version="0.0.1" />
-        <PackageReference Include="log4net" Version="3.0.2" />
+        <PackageReference Include="log4net" Version="3.1.0" />
         <PackageReference Include="MahApps.Metro" Version="2.4.10" />
         <PackageReference Include="MahApps.Metro.IconPacks.FontAwesome" Version="5.1.0" />
         <PackageReference Include="MahApps.Metro.IconPacks.Material" Version="5.1.0" />
         <PackageReference Include="MahApps.Metro.IconPacks.MaterialLight" Version="5.1.0" />
         <PackageReference Include="MahApps.Metro.IconPacks.Modern" Version="5.1.0" />
         <PackageReference Include="MahApps.Metro.IconPacks.Octicons" Version="5.1.0" />
-        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2849.39" />
-        <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.1.6" />
+        <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3240.44" />
+        <PackageReference Include="Microsoft.Windows.Compatibility" Version="9.0.5" />
+        <PackageReference Include="Microsoft.Windows.CsWinRT" Version="2.2.0" />
         <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
-        <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.4.6" />
+        <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.5.1" />
         <PackageReference Include="nulastudio.NetBeauty" Version="2.1.4.6" />
         <Reference Include="AxMSTSCLib">
             <HintPath>$(TargetDir)\lib\AxMSTSCLib.dll</HintPath>
         </Reference>
+        <Reference Include="Common">
+          <HintPath>..\Common.dll</HintPath>
+        </Reference>
         <Reference Include="Dragablz">
           <HintPath>..\3rdparty\bin\Release\net8.0-windows10.0.26100.0\win-x64\Dragablz.dll</HintPath>
+        </Reference>
+        <Reference Include="HyperVWmiDriver">
+          <HintPath>..\HyperVWmiDriver.dll</HintPath>
         </Reference>
         <Reference Include="MSTSCLib">
             <HintPath>$(TargetDir)\lib\MSTSCLib.dll</HintPath>
