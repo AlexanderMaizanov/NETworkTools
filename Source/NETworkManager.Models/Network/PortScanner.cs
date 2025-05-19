@@ -73,27 +73,23 @@ public sealed class PortScanner
         };
         return ScanPortsAsync(host, ports, portParallelOptions);
     }
+
+
+
     private async Task<IEnumerable<PortInfo>> ScanPortsAsync((IPAddress ipAddress, string hostname) host, IEnumerable<int> ports, ParallelOptions parallelOptions)
     {
         ConcurrentBag<PortInfo> results = [];
-                
-        await Parallel.ForEachAsync(ports, parallelOptions, async (port, _ct) =>
-        {
-            // Test if port is open
-            var random = new Random().Next(100, 500);
-            var tmp = _options.Timeout;
-            _options.Timeout += random;
-            var portResult = await ScanPortAsync(host.ipAddress, port, _ct).ConfigureAwait(false);
-            _options.Timeout = tmp;
+
+        await Parallel.ForEachAsync(ports, parallelOptions, async (port, _ct) => {
+            PortInfo portResult = await ScanPortAsync(host.ipAddress, port, _ct).ConfigureAwait(false);
+            IncreaseProgress();
             if (portResult.State == PortState.Open || _options.ShowAllResults)
             {
                 results.Add(portResult);
-                await Task.Delay(random, _ct); //Random delay for UI smoothness
-                OnPortScanned(new PortScannerPortScannedArgs(new PortScannerPortInfo(host.ipAddress, host.hostname, portResult.Port, portResult.LookupInfo, portResult.State)));
             }
-            IncreaseProgress();
         }).ConfigureAwait(false);
         return results.AsEnumerable();
+
     }
 
     private async Task<PortInfo> ScanPortAsync(IPAddress ipAddress, int port, CancellationToken cancellationToken)
@@ -106,8 +102,9 @@ public sealed class PortScanner
 
         try
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            
             await tcpClient.ConnectAsync(ipAddress, port, cancellationToken).ConfigureAwait(false);
+            
             portState = tcpClient.Connected ? PortState.Open : PortState.Closed;
             var isSocketReadable = tcpClient.GetStream().CanRead;
         }

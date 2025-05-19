@@ -37,6 +37,7 @@ public static class HostRangeHelper
 
         await Parallel.ForEachAsync(hosts, cancellationToken, async (host, cancellationToken) =>
         {
+            if(cancellationToken.IsCancellationRequested) return;
             switch (host)
             {
                 // 192.168.0.1
