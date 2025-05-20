@@ -255,3 +255,25 @@ paket-files/
 # Custom
 Build/
 .vscode/
+/Source/Common.deps.json
+/Source/Common.dll
+/Source/Cryptography.dll
+/Source/HyperVWmiDriver.dll
+/Source/ICSharpCode.SharpZipLib.dll
+/Source/Microsoft.Extensions.Configuration.Abstractions.dll
+/Source/Microsoft.Extensions.Configuration.Binder.dll
+/Source/Microsoft.Extensions.Configuration.dll
+/Source/Microsoft.Extensions.DependencyInjection.Abstractions.dll
+/Source/Microsoft.Extensions.DependencyInjection.dll
+/Source/Microsoft.Extensions.Diagnostics.Abstractions.dll
+/Source/Microsoft.Extensions.Logging.Abstractions.dll
+/Source/Microsoft.Extensions.Logging.Configuration.dll
+/Source/Microsoft.Extensions.Logging.dll
+/Source/Microsoft.Extensions.Options.ConfigurationExtensions.dll
+/Source/Microsoft.Extensions.Options.dll
+/Source/Microsoft.Extensions.Primitives.dll
+/Source/Newtonsoft.Json.dll
+/Source/OpenTelemetry.Api.dll
+/Source/OpenTelemetry.Api.ProviderBuilderExtensions.dll
+/Source/OpenTelemetry.dll
+/Source/System.Diagnostics.DiagnosticSource.dll
