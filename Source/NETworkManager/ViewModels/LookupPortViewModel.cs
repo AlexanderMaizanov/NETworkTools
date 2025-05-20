@@ -23,7 +23,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class LookupPortLookupViewModel : ViewModelBase
+public class LookupPortLookupViewModel : ViewModelBase1
 {
     #region Constructor, Load settings
 

@@ -19,7 +19,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class WhoisHostViewModel : ViewModelBase, IProfileManager
+public class WhoisHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

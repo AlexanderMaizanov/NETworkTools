@@ -19,7 +19,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class DNSLookupHostViewModel : ViewModelBase, IProfileManager
+public class DNSLookupHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

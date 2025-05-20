@@ -31,7 +31,7 @@ using NetworkInterface = NETworkManager.Models.Network.NetworkInterface;
 
 namespace NETworkManager.ViewModels;
 
-public class NetworkInterfaceViewModel : ViewModelBase, IProfileManager
+public class NetworkInterfaceViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

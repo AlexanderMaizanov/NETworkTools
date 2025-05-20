@@ -2,7 +2,7 @@
 
 namespace NETworkManager.ViewModels;
 
-public class SettingsNetworkViewModel : ViewModelBase
+public class SettingsNetworkViewModel : ViewModelBase1
 {
     #region Variables
 

@@ -8,7 +8,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class SNMPOIDProfilesViewModel : ViewModelBase
+public class SNMPOIDProfilesViewModel : ViewModelBase1
 {
     private string _search;
 

@@ -9,7 +9,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class IPApiDNSResolverWidgetViewModel : ViewModelBase
+public class IPApiDNSResolverWidgetViewModel : ViewModelBase1
 {
     #region Events
 

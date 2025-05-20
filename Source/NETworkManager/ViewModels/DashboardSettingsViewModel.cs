@@ -2,7 +2,7 @@
 
 namespace NETworkManager.ViewModels;
 
-public class DashboardSettingsViewModel : ViewModelBase
+public class DashboardSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

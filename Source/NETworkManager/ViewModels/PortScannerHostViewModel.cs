@@ -19,7 +19,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class PortScannerHostViewModel : ViewModelBase, IProfileManager
+public class PortScannerHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

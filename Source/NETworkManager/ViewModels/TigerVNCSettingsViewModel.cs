@@ -11,7 +11,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class TigerVNCSettingsViewModel : ViewModelBase
+public class TigerVNCSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

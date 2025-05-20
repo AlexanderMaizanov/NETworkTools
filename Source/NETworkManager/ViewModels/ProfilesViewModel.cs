@@ -13,7 +13,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class ProfilesViewModel : ViewModelBase, IProfileManager
+public class ProfilesViewModel : ViewModelBase1, IProfileManager
 {
     #region Constructor
 

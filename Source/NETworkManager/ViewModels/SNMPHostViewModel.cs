@@ -21,7 +21,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class SNMPHostViewModel : ViewModelBase, IProfileManager
+public class SNMPHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

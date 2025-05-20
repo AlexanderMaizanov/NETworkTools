@@ -25,7 +25,7 @@ using TigerVNC = NETworkManager.Profiles.Application.TigerVNC;
 
 namespace NETworkManager.ViewModels;
 
-public class TigerVNCHostViewModel : ViewModelBase, IProfileManager
+public class TigerVNCHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

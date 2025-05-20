@@ -4,7 +4,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class ArpTableAddEntryViewModel : ViewModelBase
+public class ArpTableAddEntryViewModel : ViewModelBase1
 {
     private string _ipAddress;
 

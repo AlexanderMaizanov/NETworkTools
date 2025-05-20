@@ -9,7 +9,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class SettingsLanguageViewModel : ViewModelBase
+public class SettingsLanguageViewModel : ViewModelBase1
 {
     #region Construtor, LoadSettings
 

@@ -5,7 +5,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class PortProfileViewModel : ViewModelBase
+public class PortProfileViewModel : ViewModelBase1
 {
     private readonly PortProfileInfo _info;
     private readonly bool _isLoading;

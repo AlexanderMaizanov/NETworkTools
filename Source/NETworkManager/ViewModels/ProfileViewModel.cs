@@ -20,7 +20,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class ProfileViewModel : ViewModelBase
+public class ProfileViewModel : ViewModelBase1
 {
     public ProfileViewModel(Action<ProfileViewModel> saveCommand, Action<ProfileViewModel> cancelHandler,
         IReadOnlyCollection<string> groups, string group = null, ProfileEditMode editMode = ProfileEditMode.Add,

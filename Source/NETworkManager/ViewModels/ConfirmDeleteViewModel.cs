@@ -4,7 +4,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class ConfirmDeleteViewModel : ViewModelBase
+public class ConfirmDeleteViewModel : ViewModelBase1
 {
     private readonly string _message;
 

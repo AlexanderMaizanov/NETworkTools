@@ -5,7 +5,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class WelcomeViewModel : ViewModelBase
+public class WelcomeViewModel : ViewModelBase1
 {
     private bool _checkForUpdatesAtStartup = GlobalStaticConfiguration.Update_CheckForUpdatesAtStartup;
 

@@ -9,7 +9,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class IPScannerSettingsViewModel : ViewModelBase
+public class IPScannerSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

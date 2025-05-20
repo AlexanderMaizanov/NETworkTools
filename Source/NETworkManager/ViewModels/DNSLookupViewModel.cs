@@ -22,7 +22,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class DNSLookupViewModel : ViewModelBase
+public class DNSLookupViewModel : ViewModelBase1
 {
     #region Variables
 

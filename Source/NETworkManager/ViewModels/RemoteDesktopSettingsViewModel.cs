@@ -6,7 +6,7 @@ using NETworkManager.Settings;
 
 namespace NETworkManager.ViewModels;
 
-public class RemoteDesktopSettingsViewModel : ViewModelBase
+public class RemoteDesktopSettingsViewModel : ViewModelBase1
 {
     #region Methods
 

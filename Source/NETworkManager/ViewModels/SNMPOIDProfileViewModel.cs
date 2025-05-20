@@ -7,7 +7,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class SNMPOIDProfileViewModel : ViewModelBase
+public class SNMPOIDProfileViewModel : ViewModelBase1
 {
     private readonly SNMPOIDProfileInfo _info;
     private readonly bool _isLoading;

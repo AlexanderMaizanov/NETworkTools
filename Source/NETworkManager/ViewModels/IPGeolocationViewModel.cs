@@ -18,7 +18,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class IPGeolocationViewModel : ViewModelBase
+public class IPGeolocationViewModel : ViewModelBase1
 {
     #region Variables
 

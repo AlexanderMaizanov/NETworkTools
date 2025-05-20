@@ -1,4 +1,8 @@
-﻿using System;
+﻿using CommunityToolkit.Mvvm.Input;
+using NETworkManager.Models.Network;
+using NETworkManager.Settings;
+using NETworkManager.Utilities;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Net;
@@ -7,10 +11,6 @@ using System.Net.NetworkInformation;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Input;
-using NETworkManager.Models.Network;
-using NETworkManager.Settings;
-using NETworkManager.Utilities;
 using NetworkInterface = NETworkManager.Models.Network.NetworkInterface;
 
 namespace NETworkManager.ViewModels;
@@ -483,30 +483,24 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
 
     #region ICommands & Actions
 
-    public ICommand CheckConnectionViaHotkeyCommand => new RelayCommand(_ => CheckConnectionViaHotkeyAction());
-
-    private void CheckConnectionViaHotkeyAction()
-    {
-        CheckConnection();
-    }
-
-    #endregion
+    public override IAsyncRelayCommand ScanCommand => new AsyncRelayCommand(CheckConnectionAsync);
+#endregion
 
     #region Methods
 
     public void CheckConnection()
     {
-        CheckConnectionAsync().ConfigureAwait(false);
+        CheckConnectionAsync(CancellationTokenSource.Token).ConfigureAwait(false);
     }
 
-    private async Task CheckConnectionAsync()
+    private async Task CheckConnectionAsync(CancellationToken cancellationToken)
     {
         // Cancel if running
         if (_isChecking)
         {
-            CancellationTokenSource.Cancel();
+            ScanCommand.Cancel();
 
-            while (_isChecking) await Task.Delay(250, CancellationTokenSource.Token);
+            while (_isChecking) await Task.Delay(250, cancellationToken);
         }
 
         // Start check
@@ -516,9 +510,9 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
         {
             List<Task> tasks =
             [
-                CheckConnectionComputerAsync(CancellationTokenSource.Token),
-                CheckConnectionRouterAsync(CancellationTokenSource.Token),
-                CheckConnectionInternetAsync(CancellationTokenSource.Token)
+                CheckConnectionComputerAsync(cancellationToken),
+                CheckConnectionRouterAsync(cancellationToken),
+                CheckConnectionInternetAsync(cancellationToken)
             ];
 
             await Task.WhenAll(tasks);

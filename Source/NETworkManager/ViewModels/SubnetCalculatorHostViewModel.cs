@@ -1,6 +1,6 @@
 ﻿namespace NETworkManager.ViewModels;
 
-public class SubnetCalculatorHostViewModel : ViewModelBase
+public class SubnetCalculatorHostViewModel : ViewModelBase1
 {
     public void OnViewVisible()
     {

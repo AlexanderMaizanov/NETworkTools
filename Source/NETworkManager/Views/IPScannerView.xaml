@@ -69,7 +69,7 @@
                           x:Name="ComboBoxHost"
                           ItemsSource="{Binding Path=HostHistoryView}"
                           mah:TextBoxHelper.Watermark="{x:Static Member=localization:StaticStrings.ExampleHostRange}"
-                          IsReadOnly="{Binding Path=IsRunning}"
+                          IsReadOnly="{Binding Path=ScanCommand.IsRunning}"
                           Style="{StaticResource ResourceKey=HistoryComboBox}">
                     <ComboBox.Text>
                         <Binding Path="Host" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged">
@@ -103,8 +103,8 @@
                 </Button>
                 <Button Grid.Column="6" Grid.Row="0"
                         Command="{Binding ScanCommand}"
-                        IsDefault="{Binding IsRunning, Converter={StaticResource BooleanReverseConverter}}"
-                        IsCancel="{Binding IsRunning}">
+                        IsDefault="{Binding ScanCommand.IsRunning, Converter={StaticResource BooleanReverseConverter}}"
+                        IsCancel="{Binding ScanCommand.IsRunning}">
                     <Button.Resources>
                         <Style TargetType="{x:Type Button}" BasedOn="{StaticResource ImageWithTextButton}">
                             <Setter Property="IsEnabled" Value="True" />

@@ -7,7 +7,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class TigerVNCConnectViewModel : ViewModelBase
+public class TigerVNCConnectViewModel : ViewModelBase1
 {
     private string _host;
 

@@ -15,7 +15,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class SNMPSettingsViewModel : ViewModelBase
+public class SNMPSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

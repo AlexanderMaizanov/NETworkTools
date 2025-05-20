@@ -21,7 +21,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class LookupOUILookupViewModel : ViewModelBase
+public class LookupOUILookupViewModel : ViewModelBase1
 {
     #region Constructor, Load settings
 

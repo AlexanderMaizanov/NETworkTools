@@ -20,7 +20,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class ListenersViewModel : ViewModelBase
+public class ListenersViewModel : ViewModelBase1
 {
     #region Contructor, load settings
 

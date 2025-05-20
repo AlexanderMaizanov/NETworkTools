@@ -34,7 +34,7 @@ using AWSSessionManager = NETworkManager.Profiles.Application.AWSSessionManager;
 
 namespace NETworkManager.ViewModels;
 
-public class AWSSessionManagerHostViewModel : ViewModelBase, IProfileManager
+public class AWSSessionManagerHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

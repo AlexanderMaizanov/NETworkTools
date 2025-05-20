@@ -5,7 +5,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class AWSProfileViewModel : ViewModelBase
+public class AWSProfileViewModel : ViewModelBase1
 {
     private readonly AWSProfileInfo _info;
     private readonly bool _isLoading;

@@ -8,7 +8,7 @@ using NETworkManager.ViewModels;
 
 namespace NETworkManager.Controls;
 
-public class DragablzTabItem : ViewModelBase
+public class DragablzTabItem : ViewModelBase1
 {
     /// <summary>
     ///     Private field for the <see cref="Header" /> property.

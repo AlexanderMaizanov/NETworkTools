@@ -25,7 +25,7 @@ using PowerShell = NETworkManager.Profiles.Application.PowerShell;
 
 namespace NETworkManager.ViewModels;
 
-public class PowerShellHostViewModel : ViewModelBase, IProfileManager
+public class PowerShellHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

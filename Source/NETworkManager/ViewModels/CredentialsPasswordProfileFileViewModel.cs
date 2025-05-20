@@ -5,7 +5,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class CredentialsPasswordProfileFileViewModel : ViewModelBase
+public class CredentialsPasswordProfileFileViewModel : ViewModelBase1
 {
     
     /// <summary>

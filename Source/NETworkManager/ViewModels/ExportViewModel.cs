@@ -11,7 +11,7 @@ namespace NETworkManager.ViewModels;
 
 /// <summary>
 /// </summary>
-public class ExportViewModel : ViewModelBase
+public class ExportViewModel : ViewModelBase1
 {
     /// <summary>
     /// </summary>

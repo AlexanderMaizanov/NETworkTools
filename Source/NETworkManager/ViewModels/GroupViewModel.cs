@@ -16,7 +16,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class GroupViewModel : ViewModelBase
+public class GroupViewModel : ViewModelBase1
 {
     private readonly bool _isLoading = true;
 

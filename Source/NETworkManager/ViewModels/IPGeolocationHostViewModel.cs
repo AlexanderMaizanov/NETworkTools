@@ -19,7 +19,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class IPGeolocationHostViewModel : ViewModelBase, IProfileManager
+public class IPGeolocationHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

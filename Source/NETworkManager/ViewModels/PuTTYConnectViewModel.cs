@@ -8,7 +8,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class PuTTYConnectViewModel : ViewModelBase
+public class PuTTYConnectViewModel : ViewModelBase1
 {
     private string _additionalCommandLine;
 

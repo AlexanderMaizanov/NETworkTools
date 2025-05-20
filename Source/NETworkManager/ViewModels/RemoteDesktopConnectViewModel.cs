@@ -8,7 +8,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class RemoteDesktopConnectViewModel : ViewModelBase
+public class RemoteDesktopConnectViewModel : ViewModelBase1
 {
     private bool _connectAs;
 

@@ -9,7 +9,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class SettingsSettingsViewModel : ViewModelBase
+public class SettingsSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

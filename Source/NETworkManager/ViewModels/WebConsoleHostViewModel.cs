@@ -24,7 +24,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class WebConsoleHostViewModel : ViewModelBase, IProfileManager
+public class WebConsoleHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

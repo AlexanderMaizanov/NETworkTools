@@ -6,7 +6,7 @@ using NETworkManager.Settings;
 
 namespace NETworkManager.ViewModels;
 
-public class BitCalculatorSettingsViewModel : ViewModelBase
+public class BitCalculatorSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

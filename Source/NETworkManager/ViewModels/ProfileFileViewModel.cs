@@ -5,7 +5,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class ProfileFileViewModel : ViewModelBase
+public class ProfileFileViewModel : ViewModelBase1
 {
     private bool _isEdit;
 

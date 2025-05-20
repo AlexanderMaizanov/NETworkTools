@@ -1,6 +1,6 @@
 ﻿namespace NETworkManager.ViewModels;
 
-public class DashboardViewModel : ViewModelBase
+public class DashboardViewModel : ViewModelBase1
 {
     public DashboardViewModel()
     {

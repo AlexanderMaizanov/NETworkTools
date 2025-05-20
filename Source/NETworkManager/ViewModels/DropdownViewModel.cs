@@ -6,7 +6,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class DropdownViewModel : ViewModelBase
+public class DropdownViewModel : ViewModelBase1
 {
     private readonly string _valueDescription;
 

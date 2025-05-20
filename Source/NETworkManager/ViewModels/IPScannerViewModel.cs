@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections;
+﻿using CommunityToolkit.Mvvm.Input;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -13,8 +12,10 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
+
 using NETworkManager.Controls;
 using NETworkManager.Localization;
 using NETworkManager.Localization.Resources;
@@ -27,204 +28,66 @@ using NETworkManager.Settings;
 using NETworkManager.Utilities;
 using NETworkManager.Views;
 
+using RelayCommand = CommunityToolkit.Mvvm.Input.RelayCommand;
+
 namespace NETworkManager.ViewModels;
 
-public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
+public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IProfileManagerMinimal
 {
     #region Variables
 
-    private readonly IDialogCoordinator _dialogCoordinator;
-
+    protected readonly IDialogCoordinator _dialogCoordinator;
     private readonly Guid _tabId;
-    private bool _firstLoad = true;
-    private bool _closed;
 
-    private string _host;
+    private IPScannerHostInfo _selectedResult;
+    private ObservableCollection<IPScannerHostInfo> _results = [];
 
-    public string Host
-    {
-        get => _host;
-        set
-        {
-            if (value == _host)
-                return;
+    private int _hostsScanned;
+    private int _hostsToScan;
 
-            _host = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public ICollectionView HostHistoryView { get; }
-
+    private bool _preparingScan;
     private bool _isSubnetDetectionRunning;
+
+    
 
     public bool IsSubnetDetectionRunning
     {
         get => _isSubnetDetectionRunning;
-        set
-        {
-            if (value == _isSubnetDetectionRunning)
-                return;
-
-            _isSubnetDetectionRunning = value;
-            OnPropertyChanged();
-        }
+        set => SetField(ref _isSubnetDetectionRunning, value);
     }
-
-
-    private bool _isRunning;
-
-    public bool IsRunning
-    {
-        get => _isRunning;
-        set
-        {
-            if (value == _isRunning)
-                return;
-
-            _isRunning = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private bool _isCanceling;
-
-    public bool IsCanceling
-    {
-        get => _isCanceling;
-        set
-        {
-            if (value == _isCanceling)
-                return;
-
-            _isCanceling = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private ObservableCollection<IPScannerHostInfo> _results = [];
 
     public ObservableCollection<IPScannerHostInfo> Results
     {
         get => _results;
-        set
-        {
-            if (Equals(value, _results))
-                return;
-
-            _results = value;
-        }
+        set => SetField(ref _results, value);
     }
-
-    public ICollectionView ResultsView { get; }
-
-    private IPScannerHostInfo _selectedResult;
 
     public IPScannerHostInfo SelectedResult
     {
         get => _selectedResult;
-        set
-        {
-            if (value == _selectedResult)
-                return;
-
-            _selectedResult = value;
-            OnPropertyChanged();
-        }
+        set => SetField(ref _selectedResult, value);
     }
-
-    private IList _selectedResults = new ArrayList();
-
-    public IList SelectedResults
-    {
-        get => _selectedResults;
-        set
-        {
-            if (Equals(value, _selectedResults))
-                return;
-
-            _selectedResults = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private int _hostsToScan;
 
     public int HostsToScan
     {
         get => _hostsToScan;
-        set
-        {
-            if (value == _hostsToScan)
-                return;
-
-            _hostsToScan = value;
-            OnPropertyChanged();
-        }
+        set => SetField(ref _hostsToScan, value);
     }
-
-    private int _hostsScanned;
 
     public int HostsScanned
     {
         get => _hostsScanned;
-        set
-        {
-            if (value == _hostsScanned)
-                return;
-
-            _hostsScanned = value;
-            OnPropertyChanged();
-        }
+        set => SetField(ref _hostsToScan, value);
     }
-
-    private bool _preparingScan;
 
     public bool PreparingScan
     {
         get => _preparingScan;
-        set
-        {
-            if (value == _preparingScan)
-                return;
-
-            _preparingScan = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private bool _isStatusMessageDisplayed;
-
-    public bool IsStatusMessageDisplayed
-    {
-        get => _isStatusMessageDisplayed;
-        set
-        {
-            if (value == _isStatusMessageDisplayed)
-                return;
-
-            _isStatusMessageDisplayed = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private string _statusMessage;
-
-    public string StatusMessage
-    {
-        get => _statusMessage;
-        private set
-        {
-            if (value == _statusMessage)
-                return;
-
-            _statusMessage = value;
-            OnPropertyChanged();
-        }
+        set => SetField(ref _preparingScan, value);
     }
 
     public static IEnumerable<CustomCommandInfo> CustomCommands => SettingsManager.Current.IPScanner_CustomCommands;
-
+    
     #endregion
 
     #region Constructor, load settings, shutdown
@@ -249,44 +112,39 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
             IPAddressHelper.CompareIPAddresses(x.PingInfo.IPAddress, y.PingInfo.IPAddress));
     }
 
-    public async Task OnLoaded()
+    public override async Task OnLoaded()
     {
-        if (!_firstLoad)
-            return;
-
-        if (!string.IsNullOrEmpty(Host))
-            await Start(CancellationTokenSource.Token).ConfigureAwait(false);
-
-        _firstLoad = false;
+        await base.OnLoaded();
     }
 
     #endregion
 
     #region ICommands & Actions
 
-    public ICommand ScanCommand => new RelayCommand(_ => ScanAction(CancellationTokenSource.Token), Scan_CanExecute);
+    public override IAsyncRelayCommand ScanCommand => new AsyncRelayCommand(ScanAction, Scan_CanExecute);
 
-    private bool Scan_CanExecute(object parameter)
+
+    private bool Scan_CanExecute() 
     {
         return Application.Current.MainWindow != null && !((MetroWindow)Application.Current.MainWindow).IsAnyDialogOpen;
     }
 
-    private async void ScanAction(CancellationToken cancellationToken)
+    private async Task ScanAction()
     {
-        if (IsRunning)
-            Stop();
+        if (ScanCommand.IsRunning)
+            await Stop();
         else
-            await Start(cancellationToken).ConfigureAwait(false);
+            await Start(CancellationTokenSource.Token).ConfigureAwait(false);
     }
 
-    public ICommand DetectSubnetCommand => new RelayCommand(_ => DetectSubnetAction());
+    public ICommand DetectSubnetCommand => new RelayCommand(DetectSubnetAction);
 
     private void DetectSubnetAction()
     {
         DetectIPRange().ConfigureAwait(false);
     }
 
-    public ICommand RedirectDataToApplicationCommand => new RelayCommand(RedirectDataToApplicationAction);
+    public ICommand RedirectDataToApplicationCommand => new RelayCommand<object>(name => RedirectDataToApplicationAction(name));
 
     private void RedirectDataToApplicationAction(object name)
     {
@@ -300,28 +158,28 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         EventSystem.RedirectToApplication(applicationName, host);
     }
 
-    public ICommand PerformDNSLookupIPAddressCommand => new RelayCommand(_ => PerformDNSLookupIPAddressAction());
+    public ICommand PerformDNSLookupIPAddressCommand => new RelayCommand(PerformDNSLookupIPAddressAction);
 
     private void PerformDNSLookupIPAddressAction()
     {
         EventSystem.RedirectToApplication(ApplicationName.DNSLookup, SelectedResult.PingInfo.IPAddress.ToString());
     }
 
-    public ICommand PerformDNSLookupHostnameCommand => new RelayCommand(_ => PerformDNSLookupHostnameAction());
+    public ICommand PerformDNSLookupHostnameCommand => new RelayCommand(PerformDNSLookupHostnameAction);
 
     private void PerformDNSLookupHostnameAction()
     {
         EventSystem.RedirectToApplication(ApplicationName.DNSLookup, SelectedResult.Hostname);
     }
 
-    public ICommand CustomCommandCommand => new RelayCommand(CustomCommandAction);
+    public ICommand CustomCommandCommand => new RelayCommand<object>(guid => CustomCommandAction(guid));
 
     private void CustomCommandAction(object guid)
     {
         CustomCommand(guid).ConfigureAwait(false);
     }
 
-    public ICommand AddProfileSelectedHostCommand => new RelayCommand(_ => AddProfileSelectedHostAction());
+    public ICommand AddProfileSelectedHostCommand => new RelayCommand(AddProfileSelectedHostAction);
 
     private async void AddProfileSelectedHostAction()
     {
@@ -342,7 +200,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
             ApplicationName.IPScanner);
     }
 
-    public ICommand CopySelectedPortsCommand => new RelayCommand(_ => CopySelectedPortsAction());
+    public ICommand CopySelectedPortsCommand => new RelayCommand(CopySelectedPortsAction);
 
     private void CopySelectedPortsAction()
     {
@@ -355,7 +213,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         ClipboardHelper.SetClipboard(stringBuilder.ToString());
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction());
+    //public IAsyncRelayCommand ExportCommand => new AsyncRelayCommand(Export);
 
     private void ExportAction()
     {
@@ -366,10 +224,10 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
 
     #region Methods
 
-    private async Task Start(CancellationToken cancellationToken)
+    public override async Task Start(CancellationToken cancellationToken)
     {
+        await base.Start(cancellationToken);
         IsStatusMessageDisplayed = false;
-        IsRunning = true;
         PreparingScan = true;
 
         Results.Clear();
@@ -414,7 +272,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
             new byte[SettingsManager.Current.IPScanner_ICMPBuffer],
             SettingsManager.Current.IPScanner_ResolveHostname,
             SettingsManager.Current.IPScanner_PortScanEnabled,
-            await PortRangeHelper.ConvertPortRangeToIntArrayAsync(SettingsManager.Current.IPScanner_PortScanPorts),
+            PortRangeHelper.ConvertPortRangeToIntArray(SettingsManager.Current.IPScanner_PortScanPorts),
             SettingsManager.Current.IPScanner_PortScanTimeout,
             SettingsManager.Current.IPScanner_NetBIOSEnabled,
             SettingsManager.Current.IPScanner_NetBIOSTimeout,
@@ -437,7 +295,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         }
         catch (Exception ex)
         {
-            Stop();
+            await Stop();
             StatusMessage =
                 $"{Strings.UnkownError} {ex.Message}";
             IsStatusMessageDisplayed = true;
@@ -446,11 +304,10 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
 
     }
 
-    private void Stop()
+    public override async Task Stop()
     {
-        IsCanceling = true;
-        CancellationTokenSource.Cancel();
-        ScanCompleted(null,null);
+        await base.Stop();
+        ScanCompleted(null, null);
     }
 
     private async Task DetectIPRange()
@@ -493,7 +350,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         IsSubnetDetectionRunning = false;
     }
 
-    private async Task CustomCommand(object guid)
+    protected async Task CustomCommand(object guid)
     {
         if (guid is Guid id)
         {
@@ -545,7 +402,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         list.ForEach(x => SettingsManager.Current.IPScanner_HostHistory.Add(x));
     }
 
-    private Task Export()
+    protected override Task Export()
     {
         var window = Application.Current.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive);
 
@@ -553,7 +410,6 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         {
             Title = Strings.Export
         };
-
         var exportViewModel = new ExportViewModel(async instance =>
         {
             await _dialogCoordinator.HideMetroDialogAsync(window, customDialog);
@@ -590,17 +446,9 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         return _dialogCoordinator.ShowMetroDialogAsync(window, customDialog);
     }
 
-    public void OnClose()
+    public override async Task OnClose()
     {
-        // Prevent multiple calls
-        if (_closed)
-            return;
-
-        _closed = true;
-
-        // Stop scan
-        if (IsRunning)
-            Stop();
+        await base.OnClose();
 
         ConfigurationManager.Current.IPScannerTabCount--;
     }
@@ -632,7 +480,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         }
 
         IsCanceling = false;
-        IsRunning = false;
+        //IsRunning = false;
     }
 
     private void UserHasCanceled(object sender, EventArgs e)
@@ -641,7 +489,7 @@ public class IPScannerViewModel : ViewModelBase, IProfileManagerMinimal
         IsStatusMessageDisplayed = true;
 
         IsCanceling = false;
-        IsRunning = false;
+        //IsRunning = false;
         if (!CancellationTokenSource.TryReset())
         {
             CancellationTokenSource = new(); 

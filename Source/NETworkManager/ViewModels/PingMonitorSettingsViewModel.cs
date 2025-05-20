@@ -2,7 +2,7 @@
 
 namespace NETworkManager.ViewModels;
 
-public class PingMonitorSettingsViewModel : ViewModelBase
+public class PingMonitorSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

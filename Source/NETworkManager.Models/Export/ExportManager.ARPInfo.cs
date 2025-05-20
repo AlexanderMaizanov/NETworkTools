@@ -17,7 +17,9 @@ public static partial class ExportManager
     /// <param name="filePath">Path to the export file.</param>
     /// <param name="fileType">Allowed <see cref="ExportFileType" /> are CSV, XML or JSON.</param>
     /// <param name="collection">Objects as <see cref="IReadOnlyList{ARPInfo}" /> to export.</param>
-    public static void Export(string filePath, ExportFileType fileType, IReadOnlyList<ARPInfo> collection)
+    public static void Export<T, TCollection>(string filePath, ExportFileType fileType, TCollection collection)
+        where TCollection : IReadOnlyList<T>
+        where T : ARPInfo
     {
         switch (fileType)
         {

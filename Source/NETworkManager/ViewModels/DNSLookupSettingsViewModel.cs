@@ -15,7 +15,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class DNSLookupSettingsViewModel : ViewModelBase
+public class DNSLookupSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

@@ -20,7 +20,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class BitCalculatorViewModel : ViewModelBase, IDisposable
+public class BitCalculatorViewModel : ViewModelBase1, IDisposable
 {
     #region Variables
 

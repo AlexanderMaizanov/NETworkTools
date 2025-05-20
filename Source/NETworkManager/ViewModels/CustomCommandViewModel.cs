@@ -4,7 +4,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class CustomCommandViewModel : ViewModelBase
+public class CustomCommandViewModel : ViewModelBase1
 {
     private readonly Guid _id;
 

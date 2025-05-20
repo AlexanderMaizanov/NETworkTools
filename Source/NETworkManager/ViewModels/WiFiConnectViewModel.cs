@@ -7,7 +7,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class WiFiConnectViewModel : ViewModelBase
+public class WiFiConnectViewModel : ViewModelBase1
 {
     /// <summary>
     ///     Current WiFi adapter info and network info.

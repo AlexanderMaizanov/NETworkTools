@@ -6,7 +6,7 @@ using NETworkManager.Settings;
 
 namespace NETworkManager.ViewModels;
 
-public class SettingsAutostartViewModel : ViewModelBase
+public class SettingsAutostartViewModel : ViewModelBase1
 {
     #region Constructor
 

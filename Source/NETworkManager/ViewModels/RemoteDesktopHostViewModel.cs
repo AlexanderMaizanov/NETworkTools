@@ -23,7 +23,7 @@ using RemoteDesktop = NETworkManager.Profiles.Application.RemoteDesktop;
 
 namespace NETworkManager.ViewModels;
 
-public class RemoteDesktopHostViewModel : ViewModelBase, IProfileManager
+public class RemoteDesktopHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

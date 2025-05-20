@@ -23,7 +23,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class PingMonitorHostViewModel : ViewModelBase, IProfileManager
+public class PingMonitorHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

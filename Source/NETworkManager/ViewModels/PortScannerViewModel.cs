@@ -23,7 +23,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class PortScannerViewModel : ViewModelBase
+public class PortScannerViewModel : ViewModelBase1
 {
     #region Variables
 

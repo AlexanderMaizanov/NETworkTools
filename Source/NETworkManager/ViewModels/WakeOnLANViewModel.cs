@@ -19,7 +19,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class WakeOnLANViewModel : ViewModelBase, IProfileManager
+public class WakeOnLANViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

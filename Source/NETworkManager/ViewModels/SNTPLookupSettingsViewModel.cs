@@ -13,7 +13,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class SNTPLookupSettingsViewModel : ViewModelBase
+public class SNTPLookupSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

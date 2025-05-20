@@ -17,7 +17,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class WhoisViewModel : ViewModelBase
+public class WhoisViewModel : ViewModelBase1
 {
     #region Variables
 

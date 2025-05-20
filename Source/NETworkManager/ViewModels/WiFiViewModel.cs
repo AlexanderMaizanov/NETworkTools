@@ -32,7 +32,7 @@ using System.IO;
 
 namespace NETworkManager.ViewModels;
 
-public partial class WiFiViewModel : ViewModelBase
+public partial class WiFiViewModel : ViewModelBase1
 {
     #region Variables
 

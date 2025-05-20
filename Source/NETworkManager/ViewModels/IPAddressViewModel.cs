@@ -4,7 +4,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public abstract class IPAddressViewModel : ViewModelBase
+public abstract class IPAddressViewModel : ViewModelBase1
 {
     private string _ipAddress;
 

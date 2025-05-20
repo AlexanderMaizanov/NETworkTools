@@ -1,19 +1,31 @@
 ﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Linq;
+using System.Management;
+using System.Net.Http.Headers;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Input;
+
+using CommonUtilities.Net;
+using CommunityToolkit.Mvvm.Input;
 using NETworkManager.Documentation;
 using NETworkManager.Localization.Resources;
+using NETworkManager.Models.HyperV;
+using NETworkManager.Models.Netbox;
 using NETworkManager.Properties;
 using NETworkManager.Settings;
 using NETworkManager.Update;
 using NETworkManager.Utilities;
+using RelayCommand = CommunityToolkit.Mvvm.Input.RelayCommand;
 
 namespace NETworkManager.ViewModels;
 
-public class AboutViewModel : ViewModelBase
+public class AboutViewModel : ViewModelBase1
 {
     #region Constructor
 
@@ -28,7 +40,9 @@ public class AboutViewModel : ViewModelBase
 
         ResourcesView = CollectionViewSource.GetDefaultView(ResourceManager.List);
         ResourcesView.SortDescriptions.Add(new SortDescription(nameof(ResourceInfo.Name), ListSortDirection.Ascending));
-        _cancellationTokenSource = new();
+        
+        _jsonClientNetbox.DefaultRequestHeaders.Add("Authorization", "Token 3659827ac0448b018467dc608d60d14f8eec27c5");
+        _jsonClientNetbox.DefaultRequestHeaders.Accept.Add(MediaTypeWithQualityHeaderValue.Parse("application/json"));
     }
 
     #endregion
@@ -56,11 +70,9 @@ public class AboutViewModel : ViewModelBase
 
     #region Variables
 
-    private readonly CancellationTokenSource _cancellationTokenSource;
+    public static string Version => $"{Strings.Version} {AssemblyManager.Current.Version}";
 
-    public string Version => $"{Strings.Version} {AssemblyManager.Current.Version}";
-
-    public string DevelopedByText =>
+    public static string DevelopedByText =>
         string.Format(Strings.DevelopedAndMaintainedByX + " ", Resources.NETworkManager_GitHub_User);
 
     private bool _isUpdateCheckRunning;
@@ -77,6 +89,21 @@ public class AboutViewModel : ViewModelBase
             OnPropertyChanged();
         }
     }
+
+    private bool _isUpdateNetboxRunning;
+    public bool IsUpdateNetboxRunning
+    {
+        get => _isUpdateNetboxRunning;
+        set
+        {
+            if (value == _isUpdateNetboxRunning)
+                return;
+
+            _isUpdateNetboxRunning = value;
+            OnPropertyChanged();
+        }
+    }
+
 
     private bool _isUpdateAvailable;
 
@@ -207,24 +234,108 @@ public class AboutViewModel : ViewModelBase
     #endregion
 
     #region Commands & Actions
-
-    public ICommand CheckForUpdatesCommand => new RelayCommand(_ => CheckForUpdatesAction());
-
-    private void CheckForUpdatesAction()
+    private static readonly JsonClient _jsonClientNetbox = new()
     {
-        CheckForUpdates();
+        BaseAddress = new Uri("http://scfnetb01:8000/api/"),
+        
+    };    
+    public IAsyncRelayCommand UpdateNetboxCommand => new AsyncRelayCommand(UpdateNetboxCommandAction);
+    private async Task UpdateNetboxCommandAction(CancellationToken cancellationToken)
+    {
+        ShowUpdaterMessage = false;
+        var prefixes = await _jsonClientNetbox.GetAsync<NetboxJsonResult<Prefix>>("ipam/prefixes/", cancellationToken: cancellationToken);
+        var response = await _jsonClientNetbox.GetAsync<NetboxJsonResult<Cluster>>("virtualization/clusters/", cancellationToken: cancellationToken);
+        var clusters = response.Results;
+        var scf = clusters[0];
+
+        var hvClient = new HyperVClient(scf.Name);
+        //var clust = hvClient.GetCluster(scf.Name);
+        string clusterName = scf.Name; // cluster alias
+        //string custerGroupResource = "FS_Resource1"; // Cluster group name
+        ConnectionOptions options = new() { 
+        ////    Username = "ClusterAdmin", //could be in domain\user format
+        ////    Password = "HisPassword"
+        };
+        //::ExecQuery - root\mscluster : select * from mscluster_cluster
+        //// Connect with the mscluster WMI namespace on the cluster named "MyCluster"
+        //var s = new ManagementScope("\\\\" + clusterName + "\\root\\mscluster", options);
+        //var p = new ManagementPath("Mscluster_Clustergroup.Name='" + custerGroupResource + "'");
+        //p.
+        var machines = new ConcurrentBag<VirtualMachine>();
+        var servers = new List<string>();
+        var clustHv2Scope = new ManagementScope($@"\\{scf.Name}\root\HyperVCluster\v2");
+        try
+        {
+
+            var members = HyperVClient.WmiQuery("select * from Msvm_MemberOfCollection", clustHv2Scope);
+            foreach (ManagementObject member in members)
+            {
+                var srv = member.GetPropertyValue("Member");
+                servers.Add(srv.ToString());
+            }
+            var wmi_result = HyperVClient.WmiQuery("select * from CIM_View", clustHv2Scope);
+            var taskList = new List<Task>();
+            foreach (var wmi in wmi_result)
+            {
+                taskList.Add(Task.Run(() =>
+                {
+                    var vmID = wmi.GetPropertyValue("Name").ToString();
+                    var vmOwnerHost = wmi.GetPropertyValue("HostComputerSystemName").ToString();
+                    var cim2Scope = new ManagementScope($@"\\{vmOwnerHost}\ROOT\StandardCimv2");
+                    var vir2Scope = new ManagementScope($@"\\{vmOwnerHost}\ROOT\virtualization\v2");
+
+                    var vmMemory = HyperVClient.WmiQuery($"select * from msvm_memory where ElementName=\"Memory\" and SystemName=\"{vmID}\"", vir2Scope).ToList().FirstOrDefault()?.GetPropertyValue("NumberOfBlocks");
+                    var vmProc = HyperVClient.WmiQuery($"select * from Msvm_Processor WHERE elementname=\"Processor\" and SystemName=\"{vmID}\"", vir2Scope).ToList();
+                    var etherPort = HyperVClient.WmiQuery($"select * from Msvm_SyntheticEthernetPort where elementname=\"Network Adapter\" and SystemName=\"{vmID}\"", vir2Scope).ToList().FirstOrDefault()?.GetPropertyValue("Description").ToString();
+                    var vSwitchName = HyperVClient.WmiQuery($"select * from Msvm_EthernetPortAllocationSettingData where InstanceID like \"Microsoft:{vmID}%\"", vir2Scope).ToList().FirstOrDefault()?.GetPropertyValue("LastKnownSwitchName").ToString();
+                    var vmState = Convert.ToInt32(HyperVClient.WmiQuery($"select * from CIM_ComputerSystem where Name=\'{vmID}\'", vir2Scope).Single()?.GetPropertyValue("EnabledState"));
+                    
+                    //WmiUtilities.GetVirtualMachine()
+                    var vm = new VirtualMachine()
+                    {
+                        Name = wmi.GetPropertyValue("ElementName").ToString(),
+                        MemorySizeBytes = Convert.ToInt64(vmMemory),
+                        ProcessorCount = vmProc.Count,
+                        NetAdapterName = etherPort,
+                        SwitchName = vSwitchName,
+                        State = vmState switch
+                                {
+                                    2 => VirtualMachineState.Running,
+                                    3 => VirtualMachineState.Off,
+                                    9 => VirtualMachineState.Paused,
+                                    8 => VirtualMachineState.Saved,
+                                    _ => VirtualMachineState.Unknown
+                                }
+                    };
+                    machines.Add(vm);
+                }, cancellationToken));                
+            }
+            await Task.WhenAll(taskList).ConfigureAwait(false);
+            UpdaterMessage = string.Join(Environment.NewLine, machines.Where(m => m.State == VirtualMachineState.Running).Select(machine => machine.Name).ToArray()); //
+            ShowUpdaterMessage = true;
+            //hvClient.ListVms();
+        }
+        catch (Exception e)
+        {
+            UpdaterMessage = e.Message;
+            ShowUpdaterMessage = true;
+        }
+        
+        
     }
 
-    public ICommand OpenWebsiteCommand => new RelayCommand(OpenWebsiteAction);
+    public IRelayCommand CheckForUpdatesCommand => new RelayCommand(CheckForUpdates);
+
+    public IRelayCommand OpenWebsiteCommand => new RelayCommand<object>(OpenWebsiteAction);
 
     private static void OpenWebsiteAction(object url)
     {
         ExternalProcessStarter.OpenUrl((string)url);
     }
 
-    public ICommand OpenDocumentationCommand
+    public IRelayCommand OpenDocumentationCommand
     {
-        get { return new RelayCommand(_ => OpenDocumentationAction()); }
+        get { return new RelayCommand(OpenDocumentationAction); }
     }
 
     private void OpenDocumentationAction()
@@ -232,7 +343,7 @@ public class AboutViewModel : ViewModelBase
         DocumentationManager.OpenDocumentation(DocumentationIdentifier.Default);
     }
 
-    public ICommand OpenLicenseFolderCommand => new RelayCommand(_ => OpenLicenseFolderAction());
+    public IRelayCommand OpenLicenseFolderCommand => new RelayCommand(OpenLicenseFolderAction);
 
     private void OpenLicenseFolderAction()
     {

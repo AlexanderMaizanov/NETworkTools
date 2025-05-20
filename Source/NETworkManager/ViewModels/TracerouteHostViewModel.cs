@@ -19,7 +19,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class TracerouteHostViewModel : ViewModelBase, IProfileManager
+public class TracerouteHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

@@ -15,7 +15,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class AWSSessionManagerSettingsViewModel : ViewModelBase
+public class AWSSessionManagerSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

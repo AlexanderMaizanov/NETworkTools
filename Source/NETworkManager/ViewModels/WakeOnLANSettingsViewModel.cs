@@ -2,7 +2,7 @@
 
 namespace NETworkManager.ViewModels;
 
-public class WakeOnLANSettingsViewModel : ViewModelBase
+public class WakeOnLANSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

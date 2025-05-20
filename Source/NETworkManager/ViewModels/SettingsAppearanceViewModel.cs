@@ -6,7 +6,7 @@ using NETworkManager.Settings;
 
 namespace NETworkManager.ViewModels;
 
-public class SettingsAppearanceViewModel : ViewModelBase
+public class SettingsAppearanceViewModel : ViewModelBase1
 {
     #region Variables
 

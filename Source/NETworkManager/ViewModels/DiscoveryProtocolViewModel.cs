@@ -16,7 +16,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class DiscoveryProtocolViewModel : ViewModelBase
+public class DiscoveryProtocolViewModel : ViewModelBase1
 {
     #region Variables
 

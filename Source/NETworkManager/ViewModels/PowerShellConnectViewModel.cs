@@ -10,7 +10,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class PowerShellConnectViewModel : ViewModelBase
+public class PowerShellConnectViewModel : ViewModelBase1
 {
     private string _additionalCommandLine;
 

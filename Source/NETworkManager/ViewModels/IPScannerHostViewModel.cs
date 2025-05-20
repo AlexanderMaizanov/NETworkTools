@@ -19,7 +19,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class IPScannerHostViewModel : ViewModelBase, IProfileManager
+public class IPScannerHostViewModel : ViewModelBase1, IProfileManager
 {
     #region Variables
 

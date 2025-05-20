@@ -22,7 +22,7 @@ using Ping = NETworkManager.Models.Network.Ping;
 
 namespace NETworkManager.ViewModels;
 
-public class PingMonitorViewModel : ViewModelBase
+public class PingMonitorViewModel : ViewModelBase1
 {
     #region Contructor, load settings
 

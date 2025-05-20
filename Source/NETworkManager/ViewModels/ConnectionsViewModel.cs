@@ -23,7 +23,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class ConnectionsViewModel : ViewModelBase
+public class ConnectionsViewModel : ViewModelBase1
 {
     #region Contructor, load settings
 

@@ -9,7 +9,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class ServerConnectionInfoProfileViewModel : ViewModelBase
+public class ServerConnectionInfoProfileViewModel : ViewModelBase1
 {
     private readonly ServerConnectionInfo _defaultValues;
 

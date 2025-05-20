@@ -11,7 +11,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class PortProfilesViewModel : ViewModelBase
+public class PortProfilesViewModel : ViewModelBase1
 {
     private string _search;
 

@@ -21,7 +21,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class ARPTableViewModel : ViewModelBase
+public class ARPTableViewModel : ViewModelBase1
 {
     #region Contructor, load settings
 
@@ -389,10 +389,10 @@ public class ARPTableViewModel : ViewModelBase
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                ExportManager.Export(instance.FilePath, instance.FileType,
+                ExportManager.Export<ARPInfo, ObservableCollection<ARPInfo>>(instance.FilePath, instance.FileType,
                     instance.ExportAll
                         ? Results
-                        : new ObservableCollection<ARPInfo>(SelectedResults.Cast<ARPInfo>().ToArray()));
+                        : new ObservableCollection<ARPInfo>(SelectedResults.Cast<ARPInfo>()));
             }
             catch (Exception ex)
             {

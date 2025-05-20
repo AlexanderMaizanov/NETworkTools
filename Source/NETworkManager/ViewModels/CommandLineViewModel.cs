@@ -8,7 +8,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class CommandLineViewModel : ViewModelBase
+public class CommandLineViewModel : ViewModelBase1
 {
     #region Constructor, load settings
 

@@ -9,7 +9,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class IPApiIPGeolocationWidgetViewModel : ViewModelBase
+public class IPApiIPGeolocationWidgetViewModel : ViewModelBase1
 {
     #region Events
 

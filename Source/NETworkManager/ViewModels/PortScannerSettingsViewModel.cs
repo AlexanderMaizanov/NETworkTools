@@ -11,7 +11,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class PortScannerSettingsViewModel : ViewModelBase
+public class PortScannerSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

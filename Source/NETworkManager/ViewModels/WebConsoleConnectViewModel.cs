@@ -7,7 +7,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class WebConsoleConnectViewModel : ViewModelBase
+public class WebConsoleConnectViewModel : ViewModelBase1
 {
     private string _url;
 

@@ -10,6 +10,7 @@ using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using CommunityToolkit.Mvvm.Input;
 using log4net;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
@@ -22,84 +23,18 @@ using NETworkManager.Models.Network;
 using NETworkManager.Settings;
 using NETworkManager.Utilities;
 using NETworkManager.Views;
+using RelayCommand = CommunityToolkit.Mvvm.Input.RelayCommand;
 
 namespace NETworkManager.ViewModels;
 
-public class TracerouteViewModel : ViewModelBase
+public class TracerouteViewModel : ViewModelCollectionBase<TracerouteHopInfo>
 {
     #region Variables
 
-    private static readonly ILog Log = LogManager.GetLogger(typeof(TracerouteViewModel));
-
+    private readonly ILog Log = LogManager.GetLogger(typeof(TracerouteHopInfo));
     private readonly IDialogCoordinator _dialogCoordinator;
-    private CancellationTokenSource _cancellationTokenSource;
-
     private readonly Guid _tabId;
-    private bool _firstLoad = true;
-    private bool _closed;
-
-    private string _host;
-
-    public string Host
-    {
-        get => _host;
-        set
-        {
-            if (value == _host)
-                return;
-
-            _host = value;
-            OnPropertyChanged();
-        }
-    }
-
-    public ICollectionView HostHistoryView { get; }
-
-    private bool _isRunning;
-
-    public bool IsRunning
-    {
-        get => _isRunning;
-        set
-        {
-            if (value == _isRunning)
-                return;
-
-            _isRunning = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private bool _cancelTrace;
-
-    public bool CancelTrace
-    {
-        get => _cancelTrace;
-        set
-        {
-            if (value == _cancelTrace)
-                return;
-
-            _cancelTrace = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private ObservableCollection<TracerouteHopInfo> _results = new();
-
-    public ObservableCollection<TracerouteHopInfo> Results
-    {
-        get => _results;
-        set
-        {
-            if (Equals(value, _results))
-                return;
-
-            _results = value;
-        }
-    }
-
-    public ICollectionView ResultsView { get; }
+    private bool _ipGeolocationRateLimitIsReached;
 
     private TracerouteHopInfo _selectedResult;
 
@@ -115,54 +50,6 @@ public class TracerouteViewModel : ViewModelBase
             OnPropertyChanged();
         }
     }
-
-    private IList _selectedResults = new ArrayList();
-
-    public IList SelectedResults
-    {
-        get => _selectedResults;
-        set
-        {
-            if (Equals(value, _selectedResults))
-                return;
-
-            _selectedResults = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private bool _ipGeolocationRateLimitIsReached;
-
-    private bool _isStatusMessageDisplayed;
-
-    public bool IsStatusMessageDisplayed
-    {
-        get => _isStatusMessageDisplayed;
-        set
-        {
-            if (value == _isStatusMessageDisplayed)
-                return;
-
-            _isStatusMessageDisplayed = value;
-            OnPropertyChanged();
-        }
-    }
-
-    private string _statusMessage;
-
-    public string StatusMessage
-    {
-        get => _statusMessage;
-        private set
-        {
-            if (value == _statusMessage)
-                return;
-
-            _statusMessage = value;
-            OnPropertyChanged();
-        }
-    }
-
     #endregion
 
     #region Constructor, load settings
@@ -170,7 +57,6 @@ public class TracerouteViewModel : ViewModelBase
     public TracerouteViewModel(IDialogCoordinator instance, Guid tabId, string host)
     {
         _dialogCoordinator = instance;
-        _cancellationTokenSource = new CancellationTokenSource();
 
         ConfigurationManager.Current.TracerouteTabCount++;
 
@@ -188,15 +74,9 @@ public class TracerouteViewModel : ViewModelBase
         LoadSettings();
     }
 
-    public async Task OnLoaded()
+    public override async Task OnLoaded()
     {
-        if (!_firstLoad)
-            return;
-
-        if (!string.IsNullOrEmpty(Host))
-            await StartTrace().ConfigureAwait(false);
-
-        _firstLoad = false;
+        await base.OnLoaded();
     }
 
     private void LoadSettings()
@@ -207,21 +87,21 @@ public class TracerouteViewModel : ViewModelBase
 
     #region ICommands & Actions
 
-    public ICommand TraceCommand => new RelayCommand(async _ =>
+    public override IAsyncRelayCommand ScanCommand => new AsyncRelayCommand(async _ =>
     {
-        if (IsRunning)
-            StopTrace();
+        if (ScanCommand.IsRunning)
+            await Stop();
         else
             await StartTrace().ConfigureAwait(false);
     }, Trace_CanExecute);
 
-    private bool Trace_CanExecute(object parameter)
+    private bool Trace_CanExecute()
     {
         return Application.Current.MainWindow != null &&
-               !((MetroWindow)Application.Current.MainWindow)!.IsAnyDialogOpen;
+               !((MetroWindow)Application.Current.MainWindow).IsAnyDialogOpen;
     }    
 
-    public ICommand RedirectDataToApplicationCommand => new RelayCommand(RedirectDataToApplicationAction);
+    public ICommand RedirectDataToApplicationCommand => new RelayCommand<object>(RedirectDataToApplicationAction);
 
     private void RedirectDataToApplicationAction(object name)
     {
@@ -235,14 +115,14 @@ public class TracerouteViewModel : ViewModelBase
         EventSystem.RedirectToApplication(applicationName, host);
     }
 
-    public ICommand PerformDNSLookupCommand => new RelayCommand(PerformDNSLookupAction);
+    public ICommand PerformDNSLookupCommand => new RelayCommand<object>(PerformDNSLookupAction);
 
     private void PerformDNSLookupAction(object data)
     {
         EventSystem.RedirectToApplication(ApplicationName.DNSLookup, data.ToString());
     }
 
-    public ICommand CopyTimeToClipboardCommand => new RelayCommand(CopyTimeToClipboardAction);
+    public ICommand CopyTimeToClipboardCommand => new RelayCommand<object>(CopyTimeToClipboardAction);
 
     private void CopyTimeToClipboardAction(object timeIdentifier)
     {
@@ -257,35 +137,45 @@ public class TracerouteViewModel : ViewModelBase
         ClipboardHelper.SetClipboard(time);
     }
 
-    public ICommand ExportCommand => new RelayCommand(_ => ExportAction());
+    //public override IAsyncRelayCommand ExportCommand => new AsyncRelayCommand(async _ => await ExportAction(CancellationTokenSource.Token));
 
-    private void ExportAction()
-    {
-        Export().ConfigureAwait(false);
-    }
+    //private async Task ExportAction(CancellationToken cancellationToken)
+    //{
+    //    await Export(cancellationToken).ConfigureAwait(false);
+    //}
 
     #endregion
 
     #region Methods
 
-    private void StopTrace()
+    public override async Task Stop()
     {
-        CancelTrace = true;
-        CancellationTokenSource.Cancel();
+        await base.Stop();
+    }
+
+    public override async Task Start(CancellationToken cancellationToken)
+    {
+        await base.Start(cancellationToken);
+
     }
 
     private async Task StartTrace()
     {
+        if(CancellationTokenSource.IsCancellationRequested)
+        {
+            CancellationTokenSource.Dispose();
+            CancellationTokenSource = new CancellationTokenSource();
+        }
+            
+
         _ipGeolocationRateLimitIsReached = false;
         StatusMessage = string.Empty;
         IsStatusMessageDisplayed = false;
-        CancelTrace = false;
-        IsRunning = true;
-
+        IsCanceling = CancellationTokenSource.IsCancellationRequested;
+        //IsRunning = !CancellationTokenSource.IsCancellationRequested;
         Results.Clear();
 
         DragablzTabItem.SetTabHeader(_tabId, Host);
-
         
         // Try to parse the string into an IP-Address
         if (!IPAddress.TryParse(Host, out var ipAddress))
@@ -298,7 +188,7 @@ public class TracerouteViewModel : ViewModelBase
             {
                 DisplayStatusMessage(DNSClientHelper.FormatDNSClientResultError(Host, dnsResult));
 
-                IsRunning = false;
+                //IsRunning = false;
 
                 return;
             }
@@ -331,13 +221,13 @@ public class TracerouteViewModel : ViewModelBase
         }
         catch (Exception ex) // This will catch any exception
         {
-            IsRunning = false;
+            CancellationTokenSource.Cancel();
 
             DisplayStatusMessage(ex.Message);
         }
     }
 
-    private async Task Export()
+    protected override async Task Export()
     {
         var window = Application.Current.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive);
 
@@ -397,17 +287,9 @@ public class TracerouteViewModel : ViewModelBase
         list.ForEach(x => SettingsManager.Current.Traceroute_HostHistory.Add(x));
     }
 
-    public void OnClose()
+    public override async Task OnClose()
     {
-        // Prevent multiple calls
-        if (_closed)
-            return;
-
-        _closed = true;
-
-        // Stop trace
-        if (IsRunning)
-            StopTrace();
+        await base.OnClose();
 
         ConfigurationManager.Current.TracerouteTabCount--;
     }
@@ -448,34 +330,28 @@ public class TracerouteViewModel : ViewModelBase
     private void Traceroute_MaximumHopsReached(object sender, MaximumHopsReachedArgs e)
     {
         DisplayStatusMessage(string.Format(Strings.MaximumNumberOfHopsReached, e.Hops));
-        IsRunning = false;
+        //IsRunning = false;
     }
 
     private void Traceroute_UserHasCanceled(object sender, EventArgs e)
     {
         DisplayStatusMessage(Strings.CanceledByUserMessage);
-        IsRunning = false;
+        //IsRunning = false;
+        IsCanceling = false;
     }
 
     private void Traceroute_TraceError(object sender, TracerouteErrorArgs e)
     {
         DisplayStatusMessage(e.ErrorMessage);
-        IsRunning = false;
+        //IsRunning = false;
     }
 
     private void Traceroute_TraceComplete(object sender, EventArgs e)
     {
-        IsRunning = false;
+        //IsRunning = false;
     }
 
-    private void DisplayStatusMessage(string message)
-    {
-        if (!string.IsNullOrEmpty(StatusMessage))
-            StatusMessage += Environment.NewLine;
-
-        StatusMessage += message;
-        IsStatusMessageDisplayed = true;
-    }
+    
 
     #endregion
 }

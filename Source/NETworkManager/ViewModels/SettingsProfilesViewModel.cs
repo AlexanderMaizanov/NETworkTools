@@ -14,7 +14,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class SettingsProfilesViewModel : ViewModelBase
+public class SettingsProfilesViewModel : ViewModelBase1
 {
     #region Variables
 

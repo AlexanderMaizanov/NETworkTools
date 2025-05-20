@@ -14,7 +14,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class PowerShellSettingsViewModel : ViewModelBase
+public class PowerShellSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

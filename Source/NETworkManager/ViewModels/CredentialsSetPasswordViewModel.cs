@@ -5,7 +5,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class CredentialsSetPasswordViewModel : ViewModelBase
+public class CredentialsSetPasswordViewModel : ViewModelBase1
 {
     /// <summary>
     ///     Private variable for <see cref="IsPasswordEmpty" />.

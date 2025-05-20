@@ -11,7 +11,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class SubnetCalculatorCalculatorViewModel : ViewModelBase
+public class SubnetCalculatorCalculatorViewModel : ViewModelBase1
 {
     #region Constructor, load settings
 

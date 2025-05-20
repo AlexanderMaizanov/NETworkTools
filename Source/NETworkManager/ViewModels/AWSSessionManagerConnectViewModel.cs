@@ -7,7 +7,7 @@ using NETworkManager.Utilities;
 
 namespace NETworkManager.ViewModels;
 
-public class AWSSessionManagerConnectViewModel : ViewModelBase
+public class AWSSessionManagerConnectViewModel : ViewModelBase1
 {
     private string _instanceID;
 

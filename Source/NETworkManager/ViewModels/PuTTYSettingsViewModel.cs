@@ -15,7 +15,7 @@ using PuTTY = NETworkManager.Settings.Application.PuTTY;
 
 namespace NETworkManager.ViewModels;
 
-public class PuTTYSettingsViewModel : ViewModelBase
+public class PuTTYSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

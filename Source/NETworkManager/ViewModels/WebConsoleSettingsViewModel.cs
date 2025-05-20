@@ -2,7 +2,7 @@
 
 namespace NETworkManager.ViewModels;
 
-public class WebConsoleSettingsViewModel : ViewModelBase
+public class WebConsoleSettingsViewModel : ViewModelBase1
 {
     #region Variables
 

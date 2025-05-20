@@ -25,7 +25,7 @@ using NETworkManager.Views;
 
 namespace NETworkManager.ViewModels;
 
-public class SNMPViewModel : ViewModelBase
+public class SNMPViewModel : ViewModelBase1
 {
     #region Contructor, load settings
 

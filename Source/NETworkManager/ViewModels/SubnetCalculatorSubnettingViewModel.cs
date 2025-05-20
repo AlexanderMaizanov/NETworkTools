@@ -23,7 +23,7 @@ using IPAddress = System.Net.IPAddress;
 
 namespace NETworkManager.ViewModels;
 
-public class SubnetCalculatorSubnettingViewModel : ViewModelBase
+public class SubnetCalculatorSubnettingViewModel : ViewModelBase1
 {
     #region Constructor, load settings
 

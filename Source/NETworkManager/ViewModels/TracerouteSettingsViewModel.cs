@@ -2,7 +2,7 @@
 
 namespace NETworkManager.ViewModels;
 
-public class TracerouteSettingsViewModel : ViewModelBase
+public class TracerouteSettingsViewModel : ViewModelBase1
 {
     #region Variables
 
