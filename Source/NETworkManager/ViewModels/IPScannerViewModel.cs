@@ -10,7 +10,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
-using System.Windows.Input;
 using System.Windows.Threading;
 
 using MahApps.Metro.Controls;
@@ -39,9 +38,6 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
     protected readonly IDialogCoordinator _dialogCoordinator;
     private readonly Guid _tabId;
 
-    private IPScannerHostInfo _selectedResult;
-    private ObservableCollection<IPScannerHostInfo> _results = [];
-
     private int _hostsScanned;
     private int _hostsToScan;
 
@@ -56,18 +52,6 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
         set => SetField(ref _isSubnetDetectionRunning, value);
     }
 
-    public ObservableCollection<IPScannerHostInfo> Results
-    {
-        get => _results;
-        set => SetField(ref _results, value);
-    }
-
-    public IPScannerHostInfo SelectedResult
-    {
-        get => _selectedResult;
-        set => SetField(ref _selectedResult, value);
-    }
-
     public int HostsToScan
     {
         get => _hostsToScan;
@@ -77,7 +61,7 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
     public int HostsScanned
     {
         get => _hostsScanned;
-        set => SetField(ref _hostsToScan, value);
+        set => SetField(ref _hostsScanned, value);
     }
 
     public bool PreparingScan
@@ -99,13 +83,16 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
         ConfigurationManager.Current.IPScannerTabCount++;
 
         _tabId = tabId;
-        Host = hostOrIPRange;
+        InputEntry = hostOrIPRange;
 
         // Host history
         HostHistoryView = CollectionViewSource.GetDefaultView(SettingsManager.Current.IPScanner_HostHistory);
 
         // Result view
+        Results = [];
         ResultsView = CollectionViewSource.GetDefaultView(Results);
+        StartCommand = new AsyncRelayCommand(async _ => await Task.Run(async () => await Start(_), _), Scan_CanExecute);
+        StopCommand = new AsyncRelayCommand(async _ => await Task.Run(async () => await Stop(), _));
 
         // Custom comparer to sort by IP address
         ((ListCollectionView)ResultsView).CustomSort = Comparer<IPScannerHostInfo>.Create((x, y) =>
@@ -119,32 +106,24 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
 
     #endregion
 
-    #region ICommands & Actions
+    #region IRelayCommands & Actions
 
-    public override IAsyncRelayCommand ScanCommand => new AsyncRelayCommand(ScanAction, Scan_CanExecute);
-
+    public override IAsyncRelayCommand StartCommand { get; }
+    public override IAsyncRelayCommand StopCommand { get; }
 
     private bool Scan_CanExecute() 
     {
         return Application.Current.MainWindow != null && !((MetroWindow)Application.Current.MainWindow).IsAnyDialogOpen;
     }
 
-    private async Task ScanAction()
-    {
-        if (ScanCommand.IsRunning)
-            await Stop();
-        else
-            await Start(CancellationTokenSource.Token).ConfigureAwait(false);
-    }
-
-    public ICommand DetectSubnetCommand => new RelayCommand(DetectSubnetAction);
+    public IRelayCommand DetectSubnetCommand => new RelayCommand(DetectSubnetAction);
 
     private void DetectSubnetAction()
     {
         DetectIPRange().ConfigureAwait(false);
     }
 
-    public ICommand RedirectDataToApplicationCommand => new RelayCommand<object>(name => RedirectDataToApplicationAction(name));
+    public IRelayCommand RedirectDataToApplicationCommand => new RelayCommand<object>(name => RedirectDataToApplicationAction(name));
 
     private void RedirectDataToApplicationAction(object name)
     {
@@ -158,28 +137,28 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
         EventSystem.RedirectToApplication(applicationName, host);
     }
 
-    public ICommand PerformDNSLookupIPAddressCommand => new RelayCommand(PerformDNSLookupIPAddressAction);
+    public IRelayCommand PerformDNSLookupIPAddressCommand => new RelayCommand(PerformDNSLookupIPAddressAction);
 
     private void PerformDNSLookupIPAddressAction()
     {
         EventSystem.RedirectToApplication(ApplicationName.DNSLookup, SelectedResult.PingInfo.IPAddress.ToString());
     }
 
-    public ICommand PerformDNSLookupHostnameCommand => new RelayCommand(PerformDNSLookupHostnameAction);
+    public IRelayCommand PerformDNSLookupHostnameCommand => new RelayCommand(PerformDNSLookupHostnameAction);
 
     private void PerformDNSLookupHostnameAction()
     {
         EventSystem.RedirectToApplication(ApplicationName.DNSLookup, SelectedResult.Hostname);
     }
 
-    public ICommand CustomCommandCommand => new RelayCommand<object>(guid => CustomCommandAction(guid));
+    public IRelayCommand CustomCommandCommand => new RelayCommand<object>(guid => CustomCommandAction(guid));
 
     private void CustomCommandAction(object guid)
     {
         CustomCommand(guid).ConfigureAwait(false);
     }
 
-    public ICommand AddProfileSelectedHostCommand => new RelayCommand(AddProfileSelectedHostAction);
+    public IRelayCommand AddProfileSelectedHostCommand => new RelayCommand(AddProfileSelectedHostAction);
 
     private async void AddProfileSelectedHostAction()
     {
@@ -200,7 +179,7 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
             ApplicationName.IPScanner);
     }
 
-    public ICommand CopySelectedPortsCommand => new RelayCommand(CopySelectedPortsAction);
+    public IRelayCommand CopySelectedPortsCommand => new RelayCommand(CopySelectedPortsAction);
 
     private void CopySelectedPortsAction()
     {
@@ -212,34 +191,26 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
 
         ClipboardHelper.SetClipboard(stringBuilder.ToString());
     }
-
-    //public IAsyncRelayCommand ExportCommand => new AsyncRelayCommand(Export);
-
-    private void ExportAction()
-    {
-        Export().ConfigureAwait(false);
-    }
-
     #endregion
 
     #region Methods
 
     public override async Task Start(CancellationToken cancellationToken)
     {
-        await base.Start(cancellationToken);
-        IsStatusMessageDisplayed = false;
-        PreparingScan = true;
-
-        Results.Clear();
-
-        DragablzTabItem.SetTabHeader(_tabId, Host);
-
+        await base.Start(cancellationToken).ConfigureAwait(true);
+        await Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
+        {
+            IsStatusMessageDisplayed = false;
+            PreparingScan = true;
+            Results.Clear();
+            DragablzTabItem.SetTabHeader(_tabId, InputEntry);
+        });
         // Resolve hostnames
         (List<(IPAddress ipAddress, string hostname)> hosts, List<string> hostnamesNotResolved) hosts;
 
         try
         {
-            hosts = await HostRangeHelper.ResolveAsync(HostRangeHelper.CreateListFromInput(Host),
+            hosts = await HostRangeHelper.ResolveAsync(HostRangeHelper.CreateListFromInput(InputEntry),
                 SettingsManager.Current.Network_ResolveHostnamePreferIPv4, CancellationTokenSource.Token);
         }
         catch (OperationCanceledException)
@@ -255,14 +226,15 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
                 $"{Strings.TheFollowingHostnamesCouldNotBeResolved} {string.Join(", ", hosts.hostnamesNotResolved)}";
             IsStatusMessageDisplayed = true;
         }
+        await Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal, () =>
+        {
+            HostsToScan = hosts.hosts.Count;
+            HostsScanned = 0;
 
-        HostsToScan = hosts.hosts.Count;
-        HostsScanned = 0;
-
-        PreparingScan = false;
-
-        // Add host(s) to the history
-        AddHostToHistory(Host);
+            PreparingScan = false;
+            // Add host(s) to the history
+            AddHostToHistory(InputEntry);
+        });        
 
         var ipScanner = new IPScanner(new IPScannerOptions(
             SettingsManager.Current.IPScanner_MaxHostThreads,
@@ -286,16 +258,20 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
         ipScanner.UserHasCanceled += UserHasCanceled;
         try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            await ipScanner.ScanAsync(hosts.hosts, cancellationToken).ConfigureAwait(false);
+            if (cancellationToken.IsCancellationRequested)
+            {
+                UserHasCanceled(this, EventArgs.Empty);
+                return;
+            }
+            await ipScanner.ScanAsync(hosts.hosts, cancellationToken);
         }
         catch (OperationCanceledException)
         {
-            UserHasCanceled(this, EventArgs.Empty);
+            
         }
         catch (Exception ex)
         {
-            await Stop();
+            await StopCommand.ExecuteAsync(null);
             StatusMessage =
                 $"{Strings.UnkownError} {ex.Message}";
             IsStatusMessageDisplayed = true;
@@ -306,8 +282,8 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
 
     public override async Task Stop()
     {
-        await base.Stop();
         ScanCompleted(null, null);
+        await base.Stop();
     }
 
     private async Task DetectIPRange()
@@ -327,10 +303,10 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
             {
                 subnetmaskDetected = true;
 
-                Host = $"{localIP}/{Subnetmask.ConvertSubnetmaskToCidr(networkInterface.IPv4Address.First().Item2)}";
+                InputEntry = $"{localIP}/{Subnetmask.ConvertSubnetmaskToCidr(networkInterface.IPv4Address.First().Item2)}";
 
                 // Fix: If the user clears the TextBox and then clicks again on the button, the TextBox remains empty...
-                OnPropertyChanged(nameof(Host));
+                OnPropertyChanged(nameof(InputEntry));
 
                 break;
             }
@@ -360,15 +336,15 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
                 return; // ToDo: Log and error message
 
             // Replace vars
-            var hostname = !string.IsNullOrEmpty(SelectedResult.Hostname) ? SelectedResult.Hostname.TrimEnd('.') : "";
+            var hostname = !string.IsNullOrWhiteSpace(SelectedResult.Hostname) ? SelectedResult.Hostname.TrimEnd('.') : "";
             var ipAddress = SelectedResult.PingInfo.IPAddress.ToString();
-
-            info.FilePath = Regex.Replace(info.FilePath, "\\$\\$hostname\\$\\$", hostname, RegexOptions.IgnoreCase);
+            
+            info.FilePath = Regex.Replace(info.FilePath, "\\$\\$hostname\\$\\$", string.IsNullOrWhiteSpace(hostname) ? ipAddress : hostname, RegexOptions.IgnoreCase);
             info.FilePath = Regex.Replace(info.FilePath, "\\$\\$ipaddress\\$\\$", ipAddress, RegexOptions.IgnoreCase);
 
             if (!string.IsNullOrEmpty(info.Arguments))
             {
-                info.Arguments = Regex.Replace(info.Arguments, "\\$\\$hostname\\$\\$", hostname,
+                info.Arguments = Regex.Replace(info.Arguments, "\\$\\$hostname\\$\\$", string.IsNullOrWhiteSpace(hostname) ? ipAddress : hostname,
                     RegexOptions.IgnoreCase);
                 info.Arguments = Regex.Replace(info.Arguments, "\\$\\$ipaddress\\$\\$", ipAddress,
                     RegexOptions.IgnoreCase);
@@ -396,14 +372,15 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
 
         // Clear the old items
         SettingsManager.Current.IPScanner_HostHistory.Clear();
-        OnPropertyChanged(nameof(Host)); // Raise property changed again, after the collection has been cleared
+        OnPropertyChanged(nameof(InputEntry)); // Raise property changed again, after the collection has been cleared
 
         // Fill with the new items
-        list.ForEach(x => SettingsManager.Current.IPScanner_HostHistory.Add(x));
+        list.ForEach(SettingsManager.Current.IPScanner_HostHistory.Add);
     }
 
-    protected override Task Export()
+    protected override async Task Export()
     {
+        await Task.Yield();
         var window = Application.Current.Windows.OfType<Window>().FirstOrDefault(x => x.IsActive);
 
         var customDialog = new CustomDialog
@@ -443,7 +420,7 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
             DataContext = exportViewModel
         };
 
-        return _dialogCoordinator.ShowMetroDialogAsync(window, customDialog);
+        await _dialogCoordinator.ShowMetroDialogAsync(window, customDialog);
     }
 
     public override async Task OnClose()
@@ -458,29 +435,38 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
     #region Events
     private void HostScanned(object sender, IPScannerHostScannedArgs e)
     {
+        if (e is null || e.Args is null)
+            return;
         Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Normal,() =>
         {
-            if (Results.Any(h => h.PingInfo.IPAddressInt32 == e.Args.PingInfo.IPAddressInt32))
+            if (Results.Any(h => h.PingInfo.IPAddressInt32 == e.Args.PingInfo.IPAddressInt32) 
+                || (!SettingsManager.Current.IPScanner_ShowAllResults && !e.Args.IsReachable))
                 return;
+
             Results.Add(e.Args);
         });
     }
 
     private void ProgressChanged(object sender, ProgressChangedArgs e)
     {
+        if (e is null)
+            return;
         HostsScanned = e.Value;
     }
 
     private void ScanCompleted(object sender, EventArgs e)
     {
-        if (Results.Count == 0)
+        if (!StartCommand.IsCancellationRequested)
         {
-            StatusMessage = Strings.NoReachableHostsFound;
-            IsStatusMessageDisplayed = true;
+            if (Results.Count == 0)
+            {
+                StatusMessage = Strings.NoReachableHostsFound;
+            }
+            StatusMessage = "Scan Completed.";
+            IsStatusMessageDisplayed = true; 
         }
-
         IsCanceling = false;
-        //IsRunning = false;
+        CancellationTokenSource = new();
     }
 
     private void UserHasCanceled(object sender, EventArgs e)
@@ -489,11 +475,8 @@ public class IPScannerViewModel : ViewModelCollectionBase<IPScannerHostInfo>, IP
         IsStatusMessageDisplayed = true;
 
         IsCanceling = false;
-        //IsRunning = false;
-        if (!CancellationTokenSource.TryReset())
-        {
-            CancellationTokenSource = new(); 
-        }
+        StartCommand.Cancel();
+        CancellationTokenSource.Cancel();        
     }
 
     #endregion

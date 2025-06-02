@@ -95,7 +95,7 @@ public sealed class PortScanner
     private async Task<PortInfo> ScanPortAsync(IPAddress ipAddress, int port, CancellationToken cancellationToken)
     {
         var portState = PortState.None;
-        var result = new PortInfo(port, null, portState);
+        var result = new PortInfo(port, PortLookup.LookupByPortAndProtocol(port), portState);
         using var tcpClient = new TcpClient(ipAddress.AddressFamily);
         tcpClient.SendTimeout = tcpClient.ReceiveTimeout = _options.Timeout;
         tcpClient.NoDelay = true;
@@ -104,22 +104,18 @@ public sealed class PortScanner
         {
             
             await tcpClient.ConnectAsync(ipAddress, port, cancellationToken).ConfigureAwait(false);
-            
-            portState = tcpClient.Connected ? PortState.Open : PortState.Closed;
-            var isSocketReadable = tcpClient.GetStream().CanRead;
+            portState = tcpClient.Connected && tcpClient.GetStream().CanRead ? PortState.Open : PortState.Closed;
         }
         catch
         {
-            portState = PortState.Closed;
-            result.State = portState;
+            portState = PortState.Closed;            
         }
         finally
         {
             tcpClient.Close();
-            //
+            result.State = portState;
         }        
-        if (portState == PortState.Open)//options.ShowAllResults)
-             result = new(port, PortLookup.LookupByPortAndProtocol(port), portState);
+        
         return result;
     }
 

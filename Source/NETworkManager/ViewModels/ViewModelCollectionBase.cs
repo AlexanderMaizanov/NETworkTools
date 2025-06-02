@@ -1,8 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.Input;
 using MahApps.Metro.Controls.Dialogs;
+using NETworkManager.Localization.Resources;
 using NETworkManager.Models.Export;
 using NETworkManager.Settings;
-using NETworkManager.Localization.Resources;
 using NETworkManager.Views;
 using System;
 using System.Collections;
@@ -21,6 +21,7 @@ namespace NETworkManager.ViewModels;
 /// </summary>
 public abstract class ViewModelCollectionBase<T> : ViewModelBase where T : class
 {
+    private T _selectedResult;
     private IList _selectedResults = new ArrayList();
     private ObservableCollection<T> _results = [];
     public ICollectionView HostHistoryView { get; protected set; }
@@ -30,7 +31,18 @@ public abstract class ViewModelCollectionBase<T> : ViewModelBase where T : class
         get => _selectedResults;
         set => SetField(ref _selectedResults, value);
     }
-    public ObservableCollection<T> Results { get; private set; }
+
+    public T SelectedResult
+    {
+        get => _selectedResult;
+        set => SetField(ref _selectedResult, value);
+    }
+
+    public ObservableCollection<T> Results 
+    { 
+        get => _results;
+        protected set => SetField(ref _results, value);
+    }
 
     public virtual IAsyncRelayCommand ExportCommand => new AsyncRelayCommand(Export);
 

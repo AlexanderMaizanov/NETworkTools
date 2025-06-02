@@ -66,13 +66,13 @@
                            Style="{DynamicResource ResourceKey=DefaultTextBlock}"
                            VerticalAlignment="Center" />
                 <ComboBox Grid.Column="2" Grid.Row="0"
-                          x:Name="ComboBoxHost"
+                          x:Name="ComboBoxInputEntry"
                           ItemsSource="{Binding Path=HostHistoryView}"
                           mah:TextBoxHelper.Watermark="{x:Static Member=localization:StaticStrings.ExampleHostRange}"
-                          IsReadOnly="{Binding Path=ScanCommand.IsRunning}"
+                          IsReadOnly="{Binding Path=StartCommand.IsRunning, Mode=OneWay}"
                           Style="{StaticResource ResourceKey=HistoryComboBox}">
                     <ComboBox.Text>
-                        <Binding Path="Host" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged">
+                        <Binding Path="InputEntry" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged">
                             <Binding.ValidationRules>
                                 <validators:EmptyValidator ValidatesOnTargetUpdated="True" />
                                 <validators:MultipleHostsRangeValidator ValidatesOnTargetUpdated="True" />
@@ -86,7 +86,7 @@
                     <Button.Resources>
                         <Style TargetType="{x:Type TypeName=Button}" BasedOn="{StaticResource ResourceKey=ImageButton}">
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Path=IsRunning}" Value="True">
+                                <DataTrigger Binding="{Binding Path=StartCommand.IsRunning, Mode=OneWay}" Value="True">
                                     <Setter Property="IsEnabled" Value="False" />
                                 </DataTrigger>
                                 <DataTrigger Binding="{Binding Path=IsSubnetDetectionRunning}" Value="True">
@@ -102,19 +102,19 @@
                     </Rectangle>
                 </Button>
                 <Button Grid.Column="6" Grid.Row="0"
-                        Command="{Binding ScanCommand}"
-                        IsDefault="{Binding ScanCommand.IsRunning, Converter={StaticResource BooleanReverseConverter}}"
-                        IsCancel="{Binding ScanCommand.IsRunning}">
+                        Command="{Binding StartCommand, IsAsync=True}"
+                        IsDefault="{Binding StartCommand.IsRunning, Mode=OneWay, Converter={StaticResource BooleanReverseConverter}}"
+                        IsCancel="{Binding StartCommand.IsRunning, Mode=OneWay}" 
+                        Visibility="{Binding StartCommand.IsRunning, Mode=OneWay, Converter={StaticResource BooleanReverseToVisibilityCollapsedConverter}}">
                     <Button.Resources>
                         <Style TargetType="{x:Type Button}" BasedOn="{StaticResource ImageWithTextButton}">
                             <Setter Property="IsEnabled" Value="True" />
                             <Style.Triggers>
-                                <DataTrigger Binding="{Binding Path=(Validation.HasError), ElementName=ComboBoxHost}"
-                                             Value="True">
+                                <DataTrigger Binding="{Binding Path=(Validation.HasError), ElementName=ComboBoxInputEntry}" Value="True">
                                     <Setter Property="IsEnabled" Value="False" />
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding IsCanceling}" Value="True">
-                                    <Setter Property="IsEnabled" Value="False" />
+                                <DataTrigger Binding="{Binding StartCommand.IsRunning, Mode=OneWay}" Value="True">
+                                    <Setter Property="IsEnabled" Value="True" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
@@ -137,7 +137,7 @@
                                            BasedOn="{StaticResource ButtonWithImageRectangle}">
                                         <Setter Property="OpacityMask" Value="{StaticResource VisualControlPlay}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                            <DataTrigger Binding="{Binding StartCommand.IsRunning, Mode=OneWay}" Value="True">
                                                 <Setter Property="OpacityMask" Value="{StaticResource VisualClose}" />
                                             </DataTrigger>
                                         </Style.Triggers>
@@ -150,10 +150,47 @@
                                            BasedOn="{StaticResource ButtonWithImageTextBlock}">
                                         <Setter Property="Text" Value="{x:Static localization:Strings.Scan}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsRunning}" Value="True">
+                                            <DataTrigger Binding="{Binding StartCommand.IsRunning, Mode=OneWay}" Value="True">
                                                 <Setter Property="Text" Value="{x:Static localization:Strings.Cancel}" />
                                             </DataTrigger>
                                         </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Button.Content>
+                </Button>
+                <Button Grid.Column="6" Grid.Row="0"
+                    Command="{Binding StopCommand, IsAsync=True}"
+                    IsCancel="True" 
+                    Visibility="{Binding StartCommand.IsRunning, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Hidden}">
+                    <Button.Resources>
+                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource ImageWithTextButton}">
+                            
+                        </Style>
+                    </Button.Resources>
+                    <Button.Content>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Rectangle Grid.Column="0" Grid.Row="0">
+                                <Rectangle.Resources>
+                                    <VisualBrush x:Key="VisualClose" Stretch="Uniform"
+                                 Visual="{iconPacks:Material Kind=Close}" />
+                                </Rectangle.Resources>
+                                <Rectangle.Style>
+                                    <Style TargetType="{x:Type Rectangle}"
+                           BasedOn="{StaticResource ButtonWithImageRectangle}">
+                                        <Setter Property="OpacityMask" Value="{StaticResource VisualClose}" />
+                                    </Style>
+                                </Rectangle.Style>
+                            </Rectangle>
+                            <TextBlock Grid.Column="1" Grid.Row="0">
+                                <TextBlock.Style>
+                                    <Style TargetType="{x:Type TextBlock}" BasedOn="{StaticResource ButtonWithImageTextBlock}">
+                                        <Setter Property="Text" Value="{x:Static localization:Strings.Cancel}" />
                                     </Style>
                                 </TextBlock.Style>
                             </TextBlock>
@@ -165,7 +202,7 @@
                 <StackPanel.Style>
                     <Style TargetType="{x:Type StackPanel}">
                         <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsRunning}" Value="False">
+                            <DataTrigger Binding="{Binding StartCommand.IsRunning, Mode=OneWay}" Value="False">
                                 <Setter Property="Visibility" Value="Collapsed" />
                             </DataTrigger>
                         </Style.Triggers>

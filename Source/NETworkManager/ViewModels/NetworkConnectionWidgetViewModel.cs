@@ -11,7 +11,9 @@ using System.Net.NetworkInformation;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using NetworkInterface = NETworkManager.Models.Network.NetworkInterface;
+using RelayCommand = CommunityToolkit.Mvvm.Input.RelayCommand;
 
 namespace NETworkManager.ViewModels;
 
@@ -468,7 +470,8 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
         // Detect if network address or status changed...
         NetworkChange.NetworkAvailabilityChanged += (_, _) => CheckConnection();
         NetworkChange.NetworkAddressChanged += (_, _) => CheckConnection();
-
+        StartCommand = new AsyncRelayCommand(async _ => await Task.Run(async () => await CheckConnectionAsync(_), _));
+        StopCommand = new AsyncRelayCommand(async _ => await Task.Run(async () => await Stop(), _));
         LoadSettings();
 
         // Detect if settings have changed...
@@ -482,9 +485,15 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
     #endregion
 
     #region ICommands & Actions
+    public ICommand CheckConnectionViaHotkeyCommand => new RelayCommand(CheckConnectionViaHotkeyAction);
 
-    public override IAsyncRelayCommand ScanCommand => new AsyncRelayCommand(CheckConnectionAsync);
-#endregion
+    private void CheckConnectionViaHotkeyAction()
+    {
+        CheckConnection();
+    }
+    public override IAsyncRelayCommand StartCommand { get; }
+    public override IAsyncRelayCommand StopCommand { get; }
+    #endregion
 
     #region Methods
 
@@ -498,7 +507,7 @@ public class NetworkConnectionWidgetViewModel : ViewModelBase
         // Cancel if running
         if (_isChecking)
         {
-            ScanCommand.Cancel();
+            StartCommand.Cancel();
 
             while (_isChecking) await Task.Delay(250, cancellationToken);
         }

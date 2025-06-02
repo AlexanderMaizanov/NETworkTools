@@ -59,10 +59,10 @@
                           x:Name="TextBoxHost"
                           ItemsSource="{Binding Path=HostHistoryView}"
                           mah:TextBoxHelper.Watermark="{x:Static Member=localization:StaticStrings.ExampleHostnameOrIPAddress}"
-                          IsReadOnly="{Binding IsRunning}"
+                          IsReadOnly="{Binding StartCommand.IsRunning, Mode=OneWay}"
                           Style="{StaticResource HistoryComboBox}">
                     <ComboBox.Text>
-                        <Binding Path="Host" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged">
+                        <Binding Path="InputEntry" Mode="TwoWay" UpdateSourceTrigger="PropertyChanged">
                             <Binding.ValidationRules>
                                 <validators:EmptyValidator ValidatesOnTargetUpdated="True" />
                                 <validators:IPAddressOrHostnameValidator ValidatesOnTargetUpdated="True" />
@@ -70,19 +70,18 @@
                         </Binding>
                     </ComboBox.Text>
                 </ComboBox>
-                <Button Grid.Column="4" Command="{Binding Path=TraceCommand}"
-                        IsDefault="{Binding Path=IsRunning, Converter={StaticResource ResourceKey=BooleanReverseConverter}}"
-                        IsCancel="{Binding IsRunning}" HorizontalAlignment="Right">
+                <Button Grid.Column="4" Command="{Binding StartCommand, IsAsync=True}"
+                    IsDefault="{Binding StartCommand.IsRunning, Mode=OneWay, Converter={StaticResource BooleanReverseConverter}}"
+                    IsCancel="{Binding StartCommand.IsRunning, Mode=OneWay}">
                     <Button.Resources>
-                        <Style TargetType="{x:Type TypeName=Button}"
-                               BasedOn="{StaticResource ResourceKey=ImageWithTextButton}">
+                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource ImageWithTextButton}">
                             <Setter Property="IsEnabled" Value="True" />
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding Path=(Validation.HasError), ElementName=TextBoxHost}"
-                                             Value="True">
+                             Value="True">
                                     <Setter Property="IsEnabled" Value="False" />
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding Path=CancelTrace}" Value="True">
+                                <DataTrigger Binding="{Binding IsCanceling}" Value="True">
                                     <Setter Property="IsEnabled" Value="False" />
                                 </DataTrigger>
                             </Style.Triggers>
@@ -97,33 +96,30 @@
                             <Rectangle Grid.Column="0" Grid.Row="0">
                                 <Rectangle.Resources>
                                     <VisualBrush x:Key="VisualControlPlay" Stretch="Uniform"
-                                                 Visual="{iconPacks:Material Kind=Play}" />
+                                 Visual="{iconPacks:Material Kind=Play}" />
                                     <VisualBrush x:Key="VisualClose" Stretch="Uniform"
-                                                 Visual="{iconPacks:Material Kind=Close}" />
+                                 Visual="{iconPacks:Material Kind=Close}" />
                                 </Rectangle.Resources>
                                 <Rectangle.Style>
-                                    <Style TargetType="{x:Type TypeName=Rectangle}"
-                                           BasedOn="{StaticResource ResourceKey=ButtonWithImageRectangle}">
-                                        <Setter Property="OpacityMask"
-                                                Value="{StaticResource ResourceKey=VisualControlPlay}" />
+                                    <Style TargetType="{x:Type Rectangle}"
+                           BasedOn="{StaticResource ButtonWithImageRectangle}">
+                                        <Setter Property="OpacityMask" Value="{StaticResource VisualControlPlay}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Path=IsRunning}" Value="True">
-                                                <Setter Property="OpacityMask"
-                                                        Value="{StaticResource ResourceKey=VisualClose}" />
+                                            <DataTrigger Binding="{Binding StartCommand.IsRunning, Mode=OneWay}" Value="True">
+                                                <Setter Property="OpacityMask" Value="{StaticResource VisualClose}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Rectangle.Style>
                             </Rectangle>
-                            <TextBlock Grid.Column="1">
+                            <TextBlock Grid.Column="1" Grid.Row="0">
                                 <TextBlock.Style>
-                                    <Style TargetType="{x:Type TypeName=TextBlock}"
-                                           BasedOn="{StaticResource ResourceKey=ButtonWithImageTextBlock}">
-                                        <Setter Property="Text" Value="{x:Static Member=localization:Strings.Trace}" />
+                                    <Style TargetType="{x:Type TextBlock}"
+                           BasedOn="{StaticResource ButtonWithImageTextBlock}">
+                                        <Setter Property="Text" Value="{x:Static localization:Strings.Trace}" />
                                         <Style.Triggers>
-                                            <DataTrigger Binding="{Binding Path=IsRunning}" Value="True">
-                                                <Setter Property="Text"
-                                                        Value="{x:Static Member=localization:Strings.Cancel}" />
+                                            <DataTrigger Binding="{Binding StartCommand.IsRunning, Mode=OneWay}" Value="True">
+                                                <Setter Property="Text" Value="{x:Static localization:Strings.Cancel}" />
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -135,7 +131,7 @@
             </Grid>
             <mahAppsControls:MetroProgressBar Grid.Row="1" Margin="0,10,0,0"
                                               Foreground="{DynamicResource ResourceKey=MahApps.Brushes.Accent}"
-                                              Visibility="{Binding IsRunning, Converter={StaticResource ResourceKey=BooleanToVisibilityCollapsedConverter}}"
+                                              Visibility="{Binding StartCommand.IsRunning, Mode=OneWay, Converter={StaticResource ResourceKey=BooleanToVisibilityCollapsedConverter}}"
                                               IsIndeterminate="True" />
             <TextBlock Grid.Row="2" Foreground="{DynamicResource ResourceKey=MahApps.Brushes.Accent}"
                        Text="{Binding Path=StatusMessage}"

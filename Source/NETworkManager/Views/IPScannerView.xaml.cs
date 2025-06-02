@@ -31,7 +31,7 @@ public partial class IPScannerView : IDragablzTabItem
 
     public void CloseTab()
     {
-        _viewModel.OnClose();
+        _viewModel.OnClose().GetAwaiter().GetResult();
     }
 
     private async void UserControl_Loaded(object sender, RoutedEventArgs e)
@@ -41,7 +41,7 @@ public partial class IPScannerView : IDragablzTabItem
 
     private void Dispatcher_ShutdownStarted(object sender, EventArgs e)
     {
-        _viewModel.OnClose();
+        CloseTab();
     }
 
     private void ContextMenu_Opened(object sender, RoutedEventArgs e)

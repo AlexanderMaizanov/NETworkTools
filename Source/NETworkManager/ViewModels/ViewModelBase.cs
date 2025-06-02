@@ -20,15 +20,15 @@ public abstract class ViewModelBase : PropertyChangedBase
     private bool _isCanceling;
     private bool _isStatusMessageDisplayed;
 
-    private string _host;
+    private string _inputEntry;
     private string _statusMessage;
     private string _status;
 
     protected CancellationTokenSource CancellationTokenSource = new();
-    public string Host
+    public string InputEntry
     {
-        get => _host;
-        set => SetField(ref _host, value);
+        get => _inputEntry;
+        set => SetField(ref _inputEntry, value);
     }
     public string Status
     {
@@ -40,11 +40,6 @@ public abstract class ViewModelBase : PropertyChangedBase
         get => _isCompleted;
         set => SetField(ref _isRunning, value);
     }
-    //public bool IsRunning
-    //{
-    //    get => _isRunning;
-    //    set => SetField(ref _isRunning, value);
-    //}
     public bool IsCanceling
     {
         get => _isCanceling;
@@ -60,27 +55,25 @@ public abstract class ViewModelBase : PropertyChangedBase
         get => _statusMessage;
         protected set => SetField(ref _statusMessage, value);
     }
-    public abstract IAsyncRelayCommand ScanCommand { get; }
+    public abstract IAsyncRelayCommand StartCommand { get; }
+    public abstract IAsyncRelayCommand StopCommand { get; }
 
     public virtual Task Start(CancellationToken cancellationToken)
     {
-        if (ScanCommand.IsCancellationRequested)
+        if (StartCommand.IsCancellationRequested)
         {
             CancellationTokenSource.Dispose();
             CancellationTokenSource = new CancellationTokenSource();
         }
         IsStatusMessageDisplayed = false;
-        //ScanCommand.IsRunning = true;
-        //PreparingScan = true;
-
-        //Results.Clear();
+        IsCanceling = cancellationToken.IsCancellationRequested;
         return Task.CompletedTask;
     }
     public virtual async Task Stop()
     {
         await CancellationTokenSource.CancelAsync();
+        StartCommand.Cancel();
         IsCanceling = CancellationTokenSource.IsCancellationRequested;
-        //IsRunning = !CancellationTokenSource.IsCancellationRequested;
     }
     public virtual async Task OnClose()
     {
@@ -91,17 +84,16 @@ public abstract class ViewModelBase : PropertyChangedBase
         _closed = true;
 
         // Stop scan
-        if (ScanCommand.IsRunning)
-            await Stop();
+        if (StartCommand.IsRunning)
+            await StartCommand.ExecuteAsync(null);
     }
     public virtual async Task OnLoaded()
     {
         if (!_firstLoad)
             return;
 
-        if (!string.IsNullOrEmpty(Host))
-            await Start(CancellationTokenSource.Token).ConfigureAwait(false);
-
+        if (!string.IsNullOrEmpty(InputEntry))
+            await StartCommand.ExecuteAsync(InputEntry);
         _firstLoad = false;
     }
 

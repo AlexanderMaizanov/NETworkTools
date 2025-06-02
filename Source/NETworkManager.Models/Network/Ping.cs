@@ -79,9 +79,9 @@ public sealed class Ping(int waitTime, int timeout, int ttl, bool dontFragment)
     {
         Buffer = buffer;
         Timeout = timeout;
-        return (await SendAsync(ipAddress, 0, resolve, cancellationToken))[0];
+        return (await SendAsync(ipAddress, 1, resolve, cancellationToken))[0];
     }
-    public async Task<PingInfo[]> SendAsync(IPAddress ipAddress, int attempts = 0, bool resolve = true, CancellationToken cancellationToken = default)
+    public async Task<PingInfo[]> SendAsync(IPAddress ipAddress, int attempts = 1, bool resolve = true, CancellationToken cancellationToken = default)
     {
         var hostname = string.Empty;
         var lookupDns = resolve;
@@ -159,7 +159,7 @@ public sealed class Ping(int waitTime, int timeout, int ttl, bool dontFragment)
                 if (iterations > 0)
                 {
                     iterations--;
-                }                
+                }
             }
         }
         catch (OperationCanceledException)

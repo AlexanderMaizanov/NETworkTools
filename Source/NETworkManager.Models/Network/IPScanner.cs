@@ -143,6 +143,10 @@ public sealed class IPScanner(IPScannerOptions options)
                     arpMACAddress = MACAddressHelper.GetDefaultFormat(arpMACAddress);
                 }
             }
+            if(!options.ShowAllResults)
+            {
+                portScanResults = portScanResults.Where(p => p.State == PortState.Open);
+            }
             hostInfo = new IPScannerHostInfo(
                         isReachable,
                         pingInfo,
@@ -193,7 +197,7 @@ public sealed class IPScanner(IPScannerOptions options)
             await Parallel.ForEachAsync(hosts, hostParallelOptions, async (host, cancellationToken) =>
             {
                 // Start ping async
-                var hostInfo = await ScanHostAsync(host, portScanParallelOptions, portScanParallelOptions.CancellationToken);
+                var hostInfo = await ScanHostAsync(host, portScanParallelOptions, cancellationToken);
                 OnHostScanned(new IPScannerHostScannedArgs(hostInfo));
                 IncreaseProgress();
             }).ConfigureAwait(false);
